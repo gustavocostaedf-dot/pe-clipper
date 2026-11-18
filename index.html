@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pe.clipper — Editor de Cortes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,600;0,800;1,800&family=Anton&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0e;--panel:#14141b;--panel2:#1c1c25;--line:#2a2a36;--txt:#ececf2;--mut:#8b8b9c;--cy:#25f4ee;--pk:#fe2c55;--yl:#ffd60a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:14px/1.4 Poppins,system-ui,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+header{display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--line)}
+.brand{font-weight:800;font-style:italic;font-size:20px;letter-spacing:.5px;text-shadow:-2px 0 var(--cy),2px 0 var(--pk)}
+.brand small{font-style:normal;font-weight:400;font-size:12px;color:var(--mut);text-shadow:none;margin-left:8px}
+.sp{flex:1}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:#44445a}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.pri{background:linear-gradient(90deg,var(--cy),var(--pk));border:0;color:#0a0a0e;font-weight:800}
+.btn.sm{padding:5px 10px;font-size:12px;border-radius:8px}
+.btn.xs{padding:2px 8px;font-size:11px;border-radius:6px}
+main{display:grid;grid-template-columns:1fr 390px;height:calc(100% - 57px)}
+#stage{display:flex;flex-direction:column;min-width:0;min-height:0}
+#view{flex:1;display:flex;align-items:center;justify-content:center;padding:16px;min-height:0;position:relative}
+#cv{max-width:100%;max-height:100%;background:#000;border-radius:12px;box-shadow:0 0 0 1px var(--line),0 20px 60px #0008}
+#drop{position:absolute;inset:16px;border:2px dashed #33334a;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--mut);text-align:center;background:var(--bg);cursor:pointer}
+#drop.over{border-color:var(--cy);color:var(--txt)}
+#drop b{color:var(--txt);font-size:18px}
+#controls{padding:10px 18px 14px;border-top:1px solid var(--line)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.time{font-variant-numeric:tabular-nums;color:var(--mut);font-size:13px}
+.time b{color:var(--txt);font-weight:600}
+#track{position:relative;height:56px;margin-top:10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;cursor:pointer;user-select:none;touch-action:none;overflow:hidden}
+#heat{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.9}
+.segbox{position:absolute;top:0;bottom:0;background:#ffffff14;border-left:2px solid #ffffff55;border-right:2px solid #ffffff55}
+.tzbox{position:absolute;top:0;height:16px;background:#ffd60a;border-radius:0 0 6px 6px;z-index:3;pointer-events:none;font-size:10px;font-weight:800;color:#000;text-align:center;line-height:16px;overflow:hidden}
+.segbox span{position:absolute;top:2px;left:4px;font-size:10px;font-weight:800;color:#fff;background:#0009;border-radius:4px;padding:0 4px}
+.segbox.on{background:linear-gradient(90deg,#25f4ee30,#fe2c5530);border-left:3px solid var(--cy);border-right:3px solid var(--pk)}
+.h{position:absolute;top:0;bottom:0;width:16px;margin-left:-8px;cursor:ew-resize;z-index:4}
+.h::after{content:"";position:absolute;left:5px;top:14px;bottom:14px;width:6px;border-radius:3px;background:#fff}
+#ph{position:absolute;top:0;bottom:0;width:2px;background:#fff;pointer-events:none;z-index:5;box-shadow:0 0 6px #fff}
+.mk{position:absolute;pointer-events:none;z-index:3}
+.mk.cap{bottom:3px;height:5px;border-radius:3px;background:#ffd60aaa}
+.mk.bp{top:0;bottom:0;background:#ff3b30cc;border-radius:2px;min-width:3px}
+.mk.zm{top:0;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:9px solid var(--cy);margin-left:-6px}
+aside{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:4px 0 30px}
+details{border-bottom:1px solid var(--line)}
+summary{padding:12px 18px;cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center}
+summary::after{content:"+";color:var(--mut)}
+details[open] summary::after{content:"–"}
+summary .tag{font-size:11px;font-weight:600;color:var(--mut);margin-left:auto;margin-right:10px}
+.sec{padding:0 18px 16px;display:flex;flex-direction:column;gap:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mut)}
+label.inl{flex-direction:row;align-items:center;gap:8px;color:var(--txt);font-size:13px}
+input[type=text],input[type=number],textarea,select{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%}
+textarea{resize:vertical;min-height:38px}
+input[type=range]{width:100%;accent-color:var(--cy)}
+input[type=color]{width:38px;height:30px;border:1px solid var(--line);border-radius:6px;background:none;padding:2px}
+.seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px}
+.seg button{flex:1;border:0;background:none;padding:6px 4px;border-radius:7px;cursor:pointer;font-size:12px;color:var(--mut)}
+.seg button.on{background:#2c2c3a;color:var(--txt);font-weight:600}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.list{display:flex;flex-direction:column;gap:6px}
+.item{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 9px;display:flex;flex-direction:column;gap:6px}
+.item.act{border-color:var(--yl)}
+.item.sel{border-color:var(--cy)}
+.item .r{display:flex;gap:6px;align-items:center}
+.item input.t{width:64px;background:#0d0d12;border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:12px}
+.x{background:none;border:0;color:var(--mut);cursor:pointer;font-size:15px;padding:0 4px}
+.x:hover{color:var(--txt)}
+.num{font-weight:800;font-size:12px;background:#0d0d12;border-radius:6px;padding:1px 7px}
+.hint{font-size:12px;color:var(--mut)}
+.ai{background:linear-gradient(135deg,#25f4ee14,#fe2c5514);border-bottom:1px solid var(--line)}
+.ai summary{font-size:15px}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px}
+.card h4{margin:0;font-size:14px;line-height:1.3}
+.score{font-weight:800;color:var(--yl)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{background:#0d0d12;border:1px solid var(--line);border-radius:20px;padding:2px 9px;font-size:12px}
+.copybox{white-space:pre-wrap;background:#0d0d12;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:13px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid #fff3;border-top-color:var(--cy);border-radius:50%;animation:sp 1s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+#overlay{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;z-index:10}
+#overlay.on{display:flex}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;width:min(440px,92vw);display:flex;flex-direction:column;gap:14px;max-height:92vh;overflow:auto}
+.modal h3{margin:0}
+.bar{height:8px;background:var(--panel2);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cy),var(--pk))}
+#outVid{width:100%;max-height:50vh;border-radius:10px;background:#000}
+#segList{max-height:320px;overflow:auto}
+#cv{cursor:grab;touch-action:none}
+.kbd{display:inline-block;border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:11px;color:var(--txt)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#22222e;border:1px solid var(--line);padding:9px 16px;border-radius:10px;opacity:0;transition:.25s;pointer-events:none;z-index:20}
+#toast.on{opacity:1}
+@media (max-width:860px){
+header{flex-wrap:wrap;padding:8px 12px;gap:8px}
+header .sp{display:none}
+.brand{flex:1 1 100%;font-size:18px}
+header .btn,#quickModel{flex:1 1 30%;max-width:none!important}
+main{grid-template-columns:1fr;height:auto}
+#stage{position:sticky;top:0;z-index:6;background:var(--bg);border-bottom:1px solid var(--line)}
+#view{height:auto;flex:0 0 auto;padding:8px}
+#cv{max-height:34vh;width:auto;max-width:100%}
+#drop{position:relative;inset:auto;height:30vh;width:100%}
+#controls{padding:8px 12px}
+#controls .row{gap:6px}
+#controls .time{flex:1 1 100%;order:-1;font-size:12px}
+#controls>.hint{display:none}
+.btn{min-height:44px}
+.btn.sm{min-height:40px}
+.btn.xs{min-height:34px;padding:4px 10px}
+#track{height:60px}
+.h{width:34px;margin-left:-17px}
+.h::after{left:14px}
+input[type=text],input[type=number],textarea,select{font-size:16px}
+aside{border-left:0;border-top:1px solid var(--line);overflow:visible}
+.g2{grid-template-columns:1fr}
+summary{padding:14px}
+.sec{padding:0 14px 16px}
+#resumeBar{flex-wrap:wrap;width:92vw;top:12px}
+.modal{width:96vw;padding:16px}
+}
+</style>
+</head>
+<body>
+<header>
+<div class="brand">PE.CLIPPER<small>editor de cortes</small></div>
+<div class="sp"></div>
+<select id="quickModel" title="Modelo do criador" style="width:auto;max-width:220px"></select>
+<button class="btn" id="openBtn">Abrir vídeo</button>
+<button class="btn pri" id="exportBtn" disabled>Exportar corte</button>
+<input type="file" id="file" accept="video/*" hidden>
+</header>
+<main>
+<section id="stage">
+<div id="view">
+<canvas id="cv" width="1080" height="1920"></canvas>
+<div id="drop">
+<b>Arraste um vídeo aqui</b>
+<div>ou clique para escolher (MP4, MOV, WebM)</div>
+<div class="hint">O vídeo fica só no seu navegador. Nada é enviado.</div>
+</div>
+</div>
+<div id="controls">
+<div class="row">
+<button class="btn" id="playBtn" disabled>▶ Play</button>
+<button class="btn sm" id="inBtn" disabled>Início <span class="kbd">I</span></button>
+<button class="btn sm" id="outBtn" disabled>Fim <span class="kbd">O</span></button>
+<button class="btn sm" id="addSegBtn" disabled>+ Trecho <span class="kbd">T</span></button>
+<button class="btn sm" id="zoomHereBtn" disabled>Zoom aqui <span class="kbd">Z</span></button>
+<label class="inl"><input type="checkbox" id="loop" checked> Repetir</label>
+<div class="sp"></div>
+<div class="time">Agora <b id="tNow">0:00.0</b> · Trecho <b id="tSel">–</b> · Total do corte <b id="tDur">0:00.0</b></div>
+</div>
+<div id="track"><canvas id="heat"></canvas><div id="segs"></div><div class="h" id="hIn"></div><div class="h" id="hOut"></div><div id="ph"></div></div>
+<div class="hint" style="margin-top:6px"><span class="kbd">Espaço</span> play · <span class="kbd">←</span><span class="kbd">→</span> 1s · <span class="kbd">L</span> legenda aqui · faixa colorida = energia do áudio (picos = reações)</div>
+</div>
+</section>
+<aside>
+<details class="ai" open>
+<summary>✨ Viralizar: melhor corte, título e #</summary>
+<div class="sec">
+<label>Sobre o vídeo (quem é, o que acontece)
+<textarea id="aiCtx" placeholder="Ex.: Podcast com o Fulano, ele conta a história de quando foi demitido e o host reage"></textarea></label>
+<label>Transcrição com tempos (opcional, melhora muito)
+<textarea id="aiTr" style="min-height:60px" placeholder="No YouTube: ⋯ abaixo do vídeo → Mostrar transcrição → selecione tudo e cole aqui"></textarea></label>
+<div class="g2">
+<label>Público / nicho <input type="text" id="aiNiche" placeholder="Ex.: humor, futebol, podcast"></label>
+<label>Duração do corte <select id="aiLen"><option value="20">~20 s</option><option value="30" selected>~30 s</option><option value="45">~45 s</option><option value="60">~60 s</option><option value="90">~90 s</option></select></label>
+</div>
+<button class="btn pri" id="aiBtn" disabled>Encontrar melhores cortes</button>
+<div class="hint" id="aiStatus">Abra um vídeo para começar. A análise mede a energia do áudio (risadas, gritos, reações) e o Claude olha quadros do vídeo + a transcrição.</div>
+<div id="aiOut" class="list"></div>
+<div class="card">
+<h4>📋 Planejar cortes só pela transcrição</h4>
+<div class="hint">Cole a transcrição acima e veja os melhores momentos antes mesmo de abrir o vídeo.</div>
+<button class="btn sm" id="planBtn">Listar melhores momentos</button>
+<div id="planOut" class="list"></div>
+</div>
+<div class="card">
+<h4>📝 Legenda do post</h4>
+<div class="seg" id="postTab"><button data-v="tiktok" class="on">TikTok</button><button data-v="shorts">YouTube Shorts</button></div>
+<label>Créditos do criador <input type="text" id="credits" placeholder="Ex.: LOUD Coringa"></label>
+<label>Hashtags fixas do criador <input type="text" id="tagsFixed" placeholder="Ex.: #loud #coringa #gta"></label>
+<button class="btn sm" id="postBtn">Gerar legenda do post</button>
+<div id="postOut" class="list"></div>
+</div>
+</div>
+</details>
+<details open>
+<summary>Trechos do corte <span class="tag" id="segCount"></span></summary>
+<div class="sec">
+<div class="card" style="border-color:#ffd60a66">
+<h4>⚡ Chamada no início</h4>
+<div class="hint">Coloca alguns segundos do momento mais forte do corte logo na abertura. Depois o corte toca completo.</div>
+<label class="inl"><input type="checkbox" id="teaserOn"> Usar chamada no início</label>
+<div class="row">
+<button class="btn sm" id="teaserAuto" disabled>Escolher o melhor momento</button>
+<button class="btn sm" id="teaserHere" disabled>Usar ponto atual</button>
+<button class="btn sm" id="teaserPrev" disabled>▶ Ver do início</button>
+</div>
+<label>Duração da chamada: <b id="teaserDurTxt">3 s</b> <input type="range" id="teaserDur" min="1.5" max="6" step="0.5" value="3"></label>
+<label class="inl"><input type="checkbox" id="teaserLabelOn" checked> Texto na chamada</label>
+<input type="text" id="teaserTxt" value="⚡ OLHA O QUE VEM AÍ">
+<div class="hint" id="teaserInfo">Nenhuma chamada definida.</div>
+</div>
+<div class="card">
+<h4>✂️ Cortar silêncios automaticamente</h4>
+<div class="hint">Tira as pausas e respiros de dentro dos trechos, deixando o corte mais dinâmico (jump cut).</div>
+<div class="g2">
+<label>Sensibilidade <input type="range" id="silSens" min="0.05" max="0.9" step="0.01" value="0.35"></label>
+<label>Pausa mínima (s) <input type="range" id="silMin" min="0.2" max="1.5" step="0.05" value="0.5"></label>
+</div>
+<div class="row"><button class="btn sm pri" id="silBtn" disabled>Remover silêncios</button><button class="btn sm" id="silUndo" disabled>Desfazer</button></div>
+</div>
+<div class="list" id="segList"></div>
+<div class="hint">Os trechos são unidos na ordem da lista. Clique num trecho para editar o início e o fim na linha do tempo.</div>
+</div>
+</details>
+<details>
+<summary>Formato e enquadramento</summary>
+<div class="sec">
+<label>Proporção
+<div class="seg" id="aspect"><button data-v="9:16" class="on">9:16 Vertical</button><button data-v="1:1">1:1</button><button data-v="16:9">16:9</button></div></label>
+<label>Modo
+<div class="seg" id="mode"><button data-v="blur" class="on">Desfocado</button><button data-v="cover">Preencher</button><button data-v="fit">Barras</button><button data-v="split">Tela dividida</button></div></label>
+<div id="normBox" style="display:flex;flex-direction:column;gap:10px">
+<label>Zoom <input type="range" id="zoom" min="1" max="3" step="0.01" value="1"></label>
+<label>Mover na horizontal <input type="range" id="panX" min="-1" max="1" step="0.01" value="0"></label>
+<label>Mover na vertical <input type="range" id="panY" min="-1" max="1" step="0.01" value="0"></label>
+<button class="btn sm" id="resetFrame">Centralizar</button>
+<div class="hint">Dica: arraste o vídeo no preview para enquadrar e use a roda do mouse para dar zoom.</div>
+</div>
+<div id="splitBox" style="display:none;flex-direction:column;gap:10px">
+<div class="hint">🎥 Em cima a câmera do streamer, 🎮 embaixo o jogo. <b>Arraste cada parte no preview</b> para enquadrar; a roda do mouse dá zoom na parte em que o mouse está.</div>
+<label>Altura da parte de cima <input type="range" id="splitR" min="0.25" max="0.65" step="0.01" value="0.4"></label>
+<label>Zoom da câmera (cima) <input type="range" id="topZ" min="1" max="8" step="0.05" value="3"></label>
+<label>Zoom do jogo (baixo) <input type="range" id="botZ" min="1" max="4" step="0.05" value="1"></label>
+<button class="btn sm" id="resetSplit">Resetar enquadramento</button>
+</div>
+<label class="inl"><input type="checkbox" id="safeOn" checked> Mostrar área coberta pelo TikTok (só no preview)</label>
+<label class="inl"><input type="checkbox" id="progOn"> Barra de progresso no vídeo (segura o público até o fim)</label>
+</div>
+</details>
+<details>
+<summary>Título (gancho)</summary>
+<div class="sec">
+<textarea id="title" placeholder="Ex.: ELE NÃO ESPERAVA ESSA RESPOSTA 😳"></textarea>
+<div class="row"><button class="btn sm" id="titlePrev" title="Título anterior">◀</button><button class="btn sm pri" id="titleNext">🔄 Outra opção</button><span class="hint" id="titleInfo"></span></div>
+<div class="chips" id="titleChips"></div>
+<div class="g2">
+<label>Tamanho <input type="range" id="titleSize" min="40" max="130" value="72"></label>
+<label>Posição <input type="range" id="titleY" min="0" max="1" step="0.01" value="0.12"></label>
+</div>
+<div class="row">
+<label class="inl">Texto <input type="color" id="titleColor" value="#ffffff"></label>
+<label class="inl">Fundo <input type="color" id="titleBg" value="#fe2c55"></label>
+<label class="inl"><input type="checkbox" id="titleBgOn" checked> Faixa</label>
+</div>
+</div>
+</details>
+<details>
+<summary>Legendas <span class="tag" id="capCount"></span></summary>
+<div class="sec">
+<div class="card">
+<h4>🤖 Legenda automática</h4>
+<label class="inl"><input type="checkbox" id="autoCapOn" checked> ⚡ Legendar sozinho ao escolher o corte</label>
+<label class="inl"><input type="checkbox" id="autoSrOn" checked> Sem transcrição colada, ouvir o corte sozinho</label>
+<div class="hint" id="capMasterInfo">Com a transcrição colada no ✨ Viralizar, as legendas aparecem na hora e acompanham o corte quando você muda o início ou o fim.</div>
+<button class="btn sm pri" id="srBtn" disabled>🎙️ Ouvir o vídeo e gerar legendas</button>
+<div class="hint">O Chrome escuta a fala dos trechos do corte e escreve as legendas (português). Leva o mesmo tempo que o corte, em tempo real.</div>
+<div class="row">
+<button class="btn sm" id="trCapBtn" disabled>📄 Da transcrição do YouTube</button>
+<button class="btn sm" id="srtBtn" disabled>Importar .srt / .vtt</button>
+<input type="file" id="srtFile" accept=".srt,.vtt,text/vtt" hidden>
+</div>
+<div class="hint">Transcrição: cole no campo do painel ✨ Viralizar e clique no botão. Os tempos do YouTube batem quando o arquivo é o vídeo inteiro.</div>
+</div>
+<div class="row">
+<button class="btn sm" id="addCap" disabled>+ Legenda no ponto atual</button>
+<button class="btn sm pri" id="capReview">✨ Revisar com o Claude</button>
+<button class="btn sm" id="splitCaps">Quebrar em frases curtas</button>
+<button class="btn sm" id="clearCaps">Limpar</button>
+</div>
+<div class="card">
+<h4>🔤 Corrigir palavras em todas as legendas</h4>
+<div class="g2"><input type="text" id="frFrom" placeholder="Errado (ex.: Mitsubicho)"><input type="text" id="frTo" placeholder="Certo (ex.: Mitsubishi)"></div>
+<div class="row"><button class="btn sm pri" id="frBtn">Trocar em todas</button><label class="inl"><input type="checkbox" id="frSave" checked> Lembrar nos próximos vídeos</label></div>
+<div class="hint">As correções lembradas são aplicadas sozinhas quando você importa legendas.</div>
+<div class="chips" id="dictList"></div>
+</div>
+<label>Estilo
+<select id="capStyle"><option value="karaoke" selected>Palavra por palavra (destaque)</option><option value="single">Uma palavra por vez</option><option value="phrase">Frase inteira</option></select></label>
+<div class="list" id="caps"></div>
+<div class="g2">
+<label>Tamanho <input type="range" id="capSize" min="36" max="120" value="70"></label>
+<label>Posição <input type="range" id="capY" min="0" max="1" step="0.01" value="0.72"></label>
+</div>
+<div class="row">
+<label class="inl">Cor <input type="color" id="capColor" value="#ffffff"></label>
+<label class="inl">Destaque <input type="color" id="capHi" value="#ffd60a"></label>
+<label class="inl">Contorno <input type="color" id="capStroke" value="#000000"></label>
+<label class="inl"><input type="checkbox" id="capUpper" checked> MAIÚSC.</label>
+</div>
+<label>Fonte
+<div class="seg" id="capFont"><button data-v="Poppins" class="on">Poppins</button><button data-v="Anton">Anton</button></div></label>
+</div>
+</details>
+<details>
+<summary>🤫 Censurar palavrões <span class="tag" id="bleepCount"></span></summary>
+<div class="sec">
+<div class="hint">Troca o palavrão por um bip (ou silêncio) no áudio. Ouça o corte e aperte <span class="kbd">B</span> no momento do palavrão, ou peça sugestões pela transcrição.</div>
+<div class="row">
+<button class="btn sm pri" id="bleepHere" disabled>🔇 Bip aqui <span class="kbd">B</span></button>
+<button class="btn sm" id="bleepTr" disabled>Sugerir pela transcrição</button>
+<button class="btn sm" id="bleepAuto" disabled>🤖 Marcar automático</button>
+<button class="btn sm" id="bleepClear">Limpar</button>
+</div>
+<div class="g2">
+<label>Som <select id="bleepType"><option value="beep" selected>Bip</option><option value="mute">Silêncio</option></select></label>
+<label>Duração do bip (s) <input type="range" id="bleepDur" min="0.3" max="1.5" step="0.1" value="0.6"></label>
+</div>
+<label class="inl"><input type="checkbox" id="bleepAutoOn" checked> Bip automático sempre que entrarem legendas</label>
+<label class="inl"><input type="checkbox" id="capCensor" checked> Esconder palavrões nas legendas (ex.: M***A)</label>
+<div class="hint">As sugestões pela transcrição são aproximadas (± 1 s): toque em "ouvir" em cada uma e ajuste com ◀ ▶.</div>
+<div class="list" id="bleepList"></div>
+</div>
+</details>
+<details>
+<summary>Zoom nos momentos <span class="tag" id="zoomCount"></span></summary>
+<div class="sec">
+<div class="row">
+<button class="btn sm" id="autoZoom" disabled>⚡ Zoom automático</button>
+<button class="btn sm" id="clearZoom">Limpar</button>
+</div>
+<div class="hint">O automático coloca zoom nos picos de reação (gritos, risadas, batidas) dentro dos trechos. Use <span class="kbd">Z</span> para marcar à mão.</div>
+<div class="g2">
+<label>Intensidade <input type="range" id="zoomAmt" min="0.08" max="0.6" step="0.01" value="0.25"></label>
+<label>Duração (s) <input type="range" id="zoomDur" min="0.4" max="3" step="0.1" value="1.2"></label>
+</div>
+<div class="list" id="zoomList"></div>
+</div>
+</details>
+<details>
+<summary>Música e áudio</summary>
+<div class="sec">
+<div class="row">
+<button class="btn sm" id="musBtn">Escolher música</button>
+<button class="btn sm" id="musClear">Remover</button>
+<input type="file" id="musFile" accept="audio/*" hidden>
+</div>
+<div class="hint" id="musName">Nenhuma música. Use faixas sem direitos autorais (ex.: biblioteca de áudio do YouTube/TikTok).</div>
+<label>Volume da música <input type="range" id="musVol" min="0" max="1" step="0.02" value="0.18"></label>
+<label>Começar a música em (s) <input type="range" id="musOff" min="0" max="120" step="1" value="0"></label>
+<label>Volume do vídeo <input type="range" id="vol" min="0" max="2" step="0.05" value="1"></label>
+<label class="inl"><input type="checkbox" id="sfxOn" checked> Efeitos sonoros (whoosh na chamada e nos zooms)</label>
+<label>Volume dos efeitos <input type="range" id="sfxVol" min="0" max="1" step="0.05" value="0.5"></label>
+<label class="inl"><input type="checkbox" id="muteExport"> Silenciar alto-falante ao exportar</label>
+</div>
+</details>
+<details>
+<summary>Marca d'água e logo</summary>
+<div class="sec">
+<label>Texto <input type="text" id="wm" value="@pe.clipper"></label>
+<div class="g2">
+<label>Opacidade <input type="range" id="wmOp" min="0" max="1" step="0.05" value="0.7"></label>
+<label>Posição <select id="wmPos"><option value="tl">Topo esquerda</option><option value="tr">Topo direita</option><option value="bl">Base esquerda</option><option value="br" selected>Base direita</option><option value="c">Centro</option></select></label>
+</div>
+<div class="row">
+<button class="btn sm" id="logoBtn">Escolher logo</button>
+<button class="btn sm" id="logoClear">Remover</button>
+<input type="file" id="logoFile" accept="image/*" hidden>
+</div>
+<label>Tamanho do logo <input type="range" id="logoSize" min="60" max="300" value="140"></label>
+</div>
+</details>
+<details>
+<summary>Modelos de estilo</summary>
+<div class="sec">
+<div class="hint">Dica: salve <b>um modelo por criador</b> (ex.: "Coringa", "Toguro"). Ele guarda créditos, hashtags, cores, layout e as correções de palavras. Depois é só escolher no topo da tela.</div>
+<label>Modelo <select id="presetSel"></select></label>
+<div class="row">
+<button class="btn sm" id="presetApply">Aplicar</button>
+<button class="btn sm" id="presetSave">Salvar estilo atual…</button>
+<button class="btn sm" id="presetDel">Excluir</button>
+</div>
+<div class="row" id="presetNameRow" style="display:none">
+<input type="text" id="presetName" placeholder="Nome do modelo" style="flex:1;width:auto">
+<button class="btn sm pri" id="presetOk">Salvar</button>
+</div>
+<div class="row">
+<button class="btn sm" id="presetExport">Exportar modelos (.json)</button>
+<button class="btn sm" id="presetImport">Importar</button>
+<input type="file" id="presetFile" accept=".json,application/json" hidden>
+</div>
+<div class="hint">Salva cores, fontes, posições, formato, marca d'água e logo. Os modelos ficam neste navegador; exporte o .json para usar em outro computador.</div>
+</div>
+</details>
+<details>
+<summary>📊 Resultados do canal <span class="tag" id="resCount"></span></summary>
+<div class="sec">
+<button class="btn sm pri" id="resAdd">+ Registrar corte atual como postado</button>
+<div class="row"><button class="btn sm" id="resImport">Importar resultados (.json)</button><button class="btn sm" id="resExport">Baixar resultados</button><input type="file" id="resFile" accept=".json,application/json" hidden></div>
+<div id="resSummary"></div>
+<div class="list" id="resList"></div>
+</div>
+</details>
+<details>
+<summary>📦 Fila de cortes <span class="tag" id="queueCount"></span></summary>
+<div class="sec">
+<div class="hint">Monte um corte (trechos, título, legendas, zoom, chamada) e adicione à fila. Depois exporte todos de uma vez.</div>
+<div class="row"><button class="btn sm" id="qAdd" disabled>+ Adicionar corte atual</button><button class="btn sm pri" id="qRun" disabled>Exportar fila</button></div>
+<div class="list" id="queueList"></div>
+</div>
+</details>
+<details>
+<summary>💾 Projeto</summary>
+<div class="sec">
+<div class="hint" id="projInfo">A edição é salva sozinha neste navegador. Ao abrir o mesmo vídeo de novo, dá pra continuar de onde parou.</div>
+<div class="row"><button class="btn sm" id="projSave" disabled>Baixar projeto (.json)</button><button class="btn sm" id="projOpen">Abrir projeto</button><input type="file" id="projFile" accept=".json,application/json" hidden></div>
+</div>
+</details>
+<details>
+<summary>Exportação</summary>
+<div class="sec">
+<label>Qualidade
+<div class="seg" id="quality"><button data-v="6">Leve</button><button data-v="10" class="on">Alta</button><button data-v="16">Máxima</button></div></label>
+<label>FPS
+<div class="seg" id="fps"><button data-v="30" class="on">30</button><button data-v="60">60</button></div></label>
+<div class="hint" id="fmtHint"></div>
+<button class="btn sm" id="thumbBtn" disabled>Salvar quadro atual como capa (PNG)</button>
+</div>
+</details>
+</aside>
+</main>
+<div id="overlay"><div class="modal">
+<div id="progress">
+<h3 id="pTitle">Exportando seu corte…</h3>
+<p class="hint" id="pHint">O corte é gravado em tempo real. Deixe esta aba aberta e visível até terminar.</p>
+<div class="bar"><i id="pbar"></i></div>
+<div class="time" id="ptxt" style="margin-top:8px"></div>
+<div class="copybox" id="ptLive" style="display:none;margin-top:10px;max-height:120px;overflow:auto"></div>
+<div class="row" style="margin-top:12px"><button class="btn sm" id="cancelExp">Cancelar</button></div>
+</div>
+<div id="result" style="display:none;flex-direction:column;gap:12px">
+<h3>Corte pronto ✂️</h3>
+<video id="outVid" controls playsinline></video>
+<div class="hint" id="outInfo"></div>
+<div class="row">
+<button class="btn pri" id="saveBtn">Baixar vídeo</button>
+<a class="btn" id="saveLink" style="display:none;text-decoration:none">Baixar vídeo</a>
+<button class="btn" id="closeRes">Fechar</button>
+</div>
+<div class="hint" id="saveMsg"></div>
+<div class="row"><button class="btn sm" id="resPost">📝 Legenda pro TikTok</button><button class="btn sm" id="resShorts">▶️ Legenda pro Shorts</button></div>
+<div id="resPostOut" class="list"></div>
+</div>
+<div id="qResult" style="display:none;flex-direction:column;gap:12px">
+<h3>Fila exportada ✂️</h3>
+<div class="list" id="qResList"></div>
+<button class="btn" id="qResClose">Fechar</button>
+</div>
+<div id="msgBox" style="display:none;flex-direction:column;gap:12px"><h3>Ops</h3><p id="msgTxt"></p><button class="btn" id="msgOk">Ok</button></div>
+</div></div>
+<div id="toast"></div>
+<div id="resumeBar" style="display:none;position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:15;background:#22222e;border:1px solid #25f4ee;border-radius:12px;padding:10px 14px;gap:10px;align-items:center"><span>💾 Achei uma edição salva deste vídeo.</span><button class="btn sm pri" id="resumeYes">Continuar</button><button class="btn sm" id="resumeNo">Começar do zero</button></div>
+<video id="vid" playsinline preload="auto" style="display:none"></video>
+<audio id="mus" loop preload="auto" style="display:none"></audio>
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d'),vid=$('vid'),mus=$('mus');
+const small=document.createElement('canvas'),sctx=small.getContext('2d');
+let W=1080,H=1920,loaded=false,curFile=null,fileName='corte';
+let segs=[],sel=0,caps=[],zooms=[],logoImg=null,logoData=null,env=null,ENV_DT=0.1;
+const st={aspect:'9:16',mode:'blur',font:'Poppins',quality:10,fps:30,split:{tx:.85,ty:.2,bx:.5,by:.5}};
+let downloads=null,sample=null;
+if(window.claude&&claude.use){
+claude.use('downloads').then(d=>downloads=d).catch(()=>{});
+claude.use('sample').then(s=>sample=s).catch(()=>{});
+}
+const fmt=t=>{t=Math.max(0,t||0);const m=Math.floor(t/60),s=t%60;return m+':'+(s<10?'0':'')+s.toFixed(1)};
+const num=id=>parseFloat($(id).value);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),2200)}
+function msg(m){$('progress').style.display='none';$('result').style.display='none';$('msgBox').style.display='flex';$('msgTxt').textContent=m;$('overlay').classList.add('on')}
+$('msgOk').onclick=()=>{$('overlay').classList.remove('on');$('msgBox').style.display='none'};
+async function copy(text){try{await navigator.clipboard.writeText(text);toast('Copiado ✅')}catch(e){toast('Não deu pra copiar, selecione e copie à mão')}}
+function seg(id,key,cb){$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{setSeg(id,key,b.dataset.v);cb&&cb()})}
+function setSeg(id,key,v){$(id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.v==String(v)));st[key]=isNaN(+v)?v:+v}
+seg('aspect','aspect',setAspect);seg('mode','mode',updModeUI);
+function updModeUI(){const sp=st.mode==='split';$('splitBox').style.display=sp?'flex':'none';$('normBox').style.display=sp?'none':'flex';if(sp&&st.aspect!=='9:16'){setSeg('aspect','aspect','9:16');setAspect();toast('Tela dividida usa o formato 9:16')}}
+$('resetSplit').onclick=()=>{st.split={tx:.85,ty:.2,bx:.5,by:.5};$('splitR').value=.4;$('topZ').value=3;$('botZ').value=1};seg('capFont','font');seg('quality','quality');seg('fps','fps');
+function setAspect(){if(st.aspect==='9:16'){W=1080;H=1920}else if(st.aspect==='1:1'){W=H=1080}else{W=1920;H=1080}cv.width=W;cv.height=H}
+$('openBtn').onclick=()=>$('file').click();
+$('drop').onclick=()=>$('file').click();
+$('file').onchange=e=>e.target.files[0]&&load(e.target.files[0]);
+['dragover','dragenter'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();$('drop').classList.add('over')}));
+['dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();$('drop').classList.remove('over')}));
+document.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('video'))load(f)});
+function load(f){
+curFile=f;env=null;capMaster=null;capSig='';bleeps=[];renderBleeps&&renderBleeps();teaser={s:0,set:false};curList=null;pi=-1;fileName=f.name.replace(/\.[^.]+$/,'').slice(0,60)||'corte';
+if(vid.src)URL.revokeObjectURL(vid.src);
+vid.src=URL.createObjectURL(f);vid.load();ensureAudio();
+}
+vid.addEventListener('loadedmetadata',()=>{
+loaded=true;segs=[{s:0,e:Math.min(vid.duration,60)}];sel=0;caps=[];zooms=[];
+$('drop').style.display='none';
+['playBtn','inBtn','outBtn','exportBtn','addCap','thumbBtn','addSegBtn','zoomHereBtn','autoZoom','aiBtn','silBtn','srBtn','trCapBtn','srtBtn','teaserAuto','teaserHere','teaserPrev','bleepHere','bleepTr','bleepAuto','qAdd','projSave'].forEach(i=>$(i).disabled=false);
+$('aiStatus').textContent='Pronto. Preencha o contexto (e a transcrição, se tiver) e clique em Encontrar melhores cortes.';
+vid.currentTime=0;refreshAll();checkResume();analyze().catch(()=>{}).finally(()=>{if($('teaserOn').checked)autoTeaser(true)});
+});
+let actx,vGain,spk,recDest,mGain,bGain,toneGain,bleepOn=false;
+function ensureAudio(){
+if(actx)return;
+try{actx=new (window.AudioContext||window.webkitAudioContext)();
+spk=actx.createGain();spk.connect(actx.destination);recDest=actx.createMediaStreamDestination();
+vGain=actx.createGain();actx.createMediaElementSource(vid).connect(vGain);bGain=actx.createGain();vGain.connect(bGain);bGain.connect(spk);bGain.connect(recDest);
+toneGain=actx.createGain();toneGain.gain.value=0;const osc=actx.createOscillator();osc.frequency.value=1000;osc.connect(toneGain);toneGain.connect(spk);toneGain.connect(recDest);osc.start();
+mGain=actx.createGain();actx.createMediaElementSource(mus).connect(mGain);mGain.connect(spk);mGain.connect(recDest);
+vGain.gain.value=num('vol');mGain.gain.value=num('musVol');
+}catch(e){console.warn(e)}
+}
+$('vol').oninput=()=>{if(vGain)vGain.gain.value=num('vol')};
+$('musVol').oninput=()=>{if(mGain)mGain.gain.value=num('musVol')};
+$('musBtn').onclick=()=>$('musFile').click();
+$('musFile').onchange=e=>{const f=e.target.files[0];if(!f)return;ensureAudio();
+if(mus.src)URL.revokeObjectURL(mus.src);mus.src=URL.createObjectURL(f);$('musName').textContent='🎵 '+f.name};
+mus.addEventListener('loadedmetadata',()=>{$('musOff').max=Math.max(0,Math.floor(mus.duration-5))});
+$('musClear').onclick=()=>{mus.pause();mus.removeAttribute('src');mus.load();$('musName').textContent='Nenhuma música.'};
+const hasMusic=()=>!!mus.getAttribute('src');
+let teaser={s:0,set:false},pi=-1,curList=null,flashAt=0;
+function teaserItem(){if(!loaded||!teaser.set||!$('teaserOn').checked)return null;const d=num('teaserDur');return{s:teaser.s,e:Math.min(vid.duration,teaser.s+d),teaser:true}}
+function plist(){const t=teaserItem();return t?[t,...segs]:segs}
+const off=()=>teaserItem()?1:0;
+const listDur=l=>l.reduce((a,s)=>a+(s.e-s.s),0);
+function outPos(){const l=curList||plist(),idx=pi>=0?Math.min(pi,l.length-1):sel+off();let o=0;for(let i=0;i<idx;i++)o+=l[i].e-l[i].s;const s=l[idx];return o+(s?Math.max(0,Math.min(vid.currentTime,s.e)-s.s):0)}
+const totalDur=()=>listDur(plist());
+function syncMusic(){if(!hasMusic()||!mus.duration)return;
+const want=(num('musOff')+outPos())%mus.duration;if(Math.abs(mus.currentTime-want)>0.25)mus.currentTime=want;if(!vid.paused)mus.play().catch(()=>{});}
+vid.addEventListener('play',()=>{$('playBtn').textContent='❚❚ Pausar';syncMusic()});
+vid.addEventListener('pause',()=>{$('playBtn').textContent='▶ Play';mus.pause()});
+vid.addEventListener('seeked',()=>{if(!vid.paused)syncMusic()});
+function segAt(t){return segs.findIndex(s=>t>=s.s&&t<s.e)}
+function togglePlay(){if(!loaded)return;ensureAudio();actx&&actx.resume();
+if(vid.paused){curList=plist();const o=off();
+if(o&&(pi===0||Math.abs(vid.currentTime-segs[0].s)<0.05)){pi=0;if(vid.currentTime<curList[0].s||vid.currentTime>=curList[0].e-0.05)vid.currentTime=curList[0].s}
+else{const i=segAt(vid.currentTime);if(i>=0)sel=i;else vid.currentTime=segs[sel].s;
+if(vid.currentTime>=segs[sel].e-0.05)vid.currentTime=segs[sel].s;pi=sel+o}
+vid.play();refreshAll()}else vid.pause()}
+function playFromTop(){if(!loaded)return;ensureAudio();actx&&actx.resume();curList=plist();pi=0;vid.currentTime=curList[0].s;if(!curList[0].teaser)sel=0;vid.play();refreshAll()}
+$('playBtn').onclick=togglePlay;
+$('inBtn').onclick=()=>{const s=segs[sel];s.s=Math.min(vid.currentTime,s.e-0.2);refreshAll()};
+$('outBtn').onclick=()=>{const s=segs[sel];s.e=Math.max(vid.currentTime,s.s+0.2);refreshAll()};
+$('addSegBtn').onclick=()=>{const t=vid.currentTime;segs.push({s:t,e:Math.min(vid.duration,t+10)});sel=segs.length-1;refreshAll();toast('Trecho '+segs.length+' criado. Ajuste o fim com O.')};
+document.addEventListener('keydown',e=>{
+if(['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)||!loaded||exporting)return;
+const k=e.key.toLowerCase();
+if(e.code==='Space'){e.preventDefault();togglePlay()}
+else if(k==='i')$('inBtn').click();else if(k==='o')$('outBtn').click();
+else if(k==='l')$('addCap').click();else if(k==='t')$('addSegBtn').click();else if(k==='z')$('zoomHereBtn').click();else if(k==='b')$('bleepHere').click();
+else if(e.key==='ArrowLeft')vid.currentTime=Math.max(0,vid.currentTime-1);
+else if(e.key==='ArrowRight')vid.currentTime=Math.min(vid.duration,vid.currentTime+1);
+});
+const track=$('track');
+const pct=t=>loaded?(t/vid.duration*100):0;
+function refreshAll(){renderTimeline();renderSegList();renderCaps();renderZooms()}
+function renderTimeline(){
+const box=$('segs');box.innerHTML='';
+segs.forEach((s,i)=>{const d=document.createElement('div');d.className='segbox'+(i===sel?' on':'');
+d.style.left=pct(s.s)+'%';d.style.width=(pct(s.e)-pct(s.s))+'%';d.innerHTML=`<span>${i+1}</span>`;box.appendChild(d)});
+const s=segs[sel]||{s:0,e:0};$('hIn').style.left=pct(s.s)+'%';$('hOut').style.left=pct(s.e)+'%';
+const ti=teaserItem();if(ti){const d=document.createElement('div');d.className='tzbox';d.style.left=pct(ti.s)+'%';d.style.width=Math.max(1.2,pct(ti.e)-pct(ti.s))+'%';d.textContent='⚡';d.title='Chamada';box.appendChild(d)}
+track.querySelectorAll('.mk').forEach(n=>n.remove());
+caps.forEach(c=>{const m=document.createElement('div');m.className='mk cap';m.style.left=pct(c.s)+'%';m.style.width=Math.max(.3,pct(c.e)-pct(c.s))+'%';track.appendChild(m)});
+bleeps.forEach(b=>{const m=document.createElement('div');m.className='mk bp';m.style.left=pct(b.t)+'%';m.style.width=(pct(b.t+b.d)-pct(b.t))+'%';track.appendChild(m)});
+zooms.forEach(z=>{const m=document.createElement('div');m.className='mk zm';m.style.left=pct(z.t)+'%';track.appendChild(m)});
+$('tSel').textContent=segs.length?`${sel+1}: ${fmt(s.s)} → ${fmt(s.e)}`:'–';$('tDur').textContent=fmt(totalDur());
+$('segCount').textContent=segs.length+(segs.length>1?' trechos · ':' trecho · ')+fmt(totalDur());
+}
+function drawHeat(){
+const c=$('heat'),r=c.getBoundingClientRect();c.width=Math.max(50,Math.round(r.width));c.height=56;
+const g=c.getContext('2d');g.clearRect(0,0,c.width,c.height);if(!env)return;
+const n=env.length,grad=g.createLinearGradient(0,56,0,0);grad.addColorStop(0,'#25f4ee55');grad.addColorStop(1,'#fe2c55cc');
+g.fillStyle=grad;
+for(let x=0;x<c.width;x++){const a=Math.floor(x/c.width*n),b=Math.max(a+1,Math.floor((x+1)/c.width*n));let m=0;for(let i=a;i<b&&i<n;i++)m=Math.max(m,env[i]);
+const h=Math.min(1,m)*44;g.fillRect(x,56-h,1,h)}
+}
+window.addEventListener('resize',drawHeat);
+function tAt(x){const r=track.getBoundingClientRect();return Math.min(1,Math.max(0,(x-r.left)/r.width))*vid.duration}
+let drag=null;
+track.addEventListener('pointerdown',e=>{if(!loaded||exporting)return;
+drag=e.target.id==='hIn'?'in':e.target.id==='hOut'?'out':'seek';track.setPointerCapture(e.pointerId);move(e)});
+track.addEventListener('pointermove',e=>drag&&move(e));
+track.addEventListener('pointerup',()=>{if(drag==='seek'){const i=segAt(vid.currentTime);if(i>=0&&i!==sel){sel=i;refreshAll()}}drag=null});
+function move(e){const t=tAt(e.clientX),s=segs[sel];
+if(drag==='in'){s.s=Math.min(t,s.e-0.2);vid.currentTime=s.s}
+else if(drag==='out'){s.e=Math.max(t,s.s+0.2);vid.currentTime=s.e}
+else vid.currentTime=t;renderTimeline();renderSegList()}
+function renderSegList(){
+const box=$('segList');box.innerHTML='';
+segs.forEach((s,i)=>{const d=document.createElement('div');d.className='item'+(i===sel?' sel':'');
+d.innerHTML=`<div class="r"><span class="num">${i+1}</span><input class="t" type="number" step="0.1" value="${s.s.toFixed(1)}"> → <input class="t" type="number" step="0.1" value="${s.e.toFixed(1)}"><span class="hint">${(s.e-s.s).toFixed(1)}s</span><span class="sp"></span><button class="x" data-a="up" title="Subir">↑</button><button class="x" data-a="dn" title="Descer">↓</button><button class="x" data-a="del" title="Apagar">✕</button></div>`;
+const [a,b]=d.querySelectorAll('input');
+a.onchange=()=>{s.s=Math.max(0,Math.min(+a.value,s.e-0.2));refreshAll()};b.onchange=()=>{s.e=Math.min(vid.duration,Math.max(+b.value,s.s+0.2));refreshAll()};
+d.onclick=ev=>{const act=ev.target.dataset&&ev.target.dataset.a;
+if(act==='del'){if(segs.length===1)return toast('O corte precisa de pelo menos 1 trecho');segs.splice(i,1);sel=Math.min(sel,segs.length-1)}
+else if(act==='up'&&i>0){[segs[i-1],segs[i]]=[segs[i],segs[i-1]];sel=i-1}
+else if(act==='dn'&&i<segs.length-1){[segs[i+1],segs[i]]=[segs[i],segs[i+1]];sel=i+1}
+else if(ev.target.tagName!=='INPUT'){sel=i;pi=i+off();vid.currentTime=s.s}
+refreshAll()};
+box.appendChild(d)});
+}
+function renderCaps(){
+const box=$('caps');box.innerHTML='';caps.sort((a,b)=>a.s-b.s);
+caps.forEach(c=>{const d=document.createElement('div');d.className='item';
+d.innerHTML=`<div class="r"><input class="t" type="number" step="0.1" value="${c.s.toFixed(1)}"> → <input class="t" type="number" step="0.1" value="${c.e.toFixed(1)}"><button class="btn xs">ir</button><span class="sp"></span><button class="x" title="Apagar">✕</button></div><textarea placeholder="Texto da legenda"></textarea>`;
+const [a,b]=d.querySelectorAll('input'),ta=d.querySelector('textarea');ta.value=c.t;
+a.onchange=()=>{c.s=Math.max(0,+a.value);renderTimeline()};b.onchange=()=>{c.e=Math.max(c.s+0.1,+b.value);renderTimeline()};
+ta.oninput=()=>c.t=ta.value;d.querySelector('.btn').onclick=()=>vid.currentTime=c.s;
+d.querySelector('.x').onclick=()=>{caps.splice(caps.indexOf(c),1);if(capMaster&&capMaster.includes(c))capMaster.splice(capMaster.indexOf(c),1);renderCaps();renderTimeline()};
+c.el=d;box.appendChild(d)});
+$('capCount').textContent=caps.length?caps.length:'';
+}
+$('addCap').onclick=()=>{const s=vid.currentTime,c={s,e:Math.min(vid.duration,s+2),t:''};caps.push(c);if(capMaster)capMaster.push(c);renderCaps();renderTimeline();
+$('caps').closest('details').open=true;c.el.querySelector('textarea').focus()};
+$('clearCaps').onclick=()=>{caps=[];capMaster=null;capInfo();renderCaps();renderTimeline()};
+function renderZooms(){
+const box=$('zoomList');box.innerHTML='';zooms.sort((a,b)=>a.t-b.t);
+zooms.forEach(z=>{const d=document.createElement('div');d.className='item';
+d.innerHTML=`<div class="r">🔍 <b>${fmt(z.t)}</b><span class="hint">${Math.round(z.a*100)}% · ${z.d.toFixed(1)}s</span><span class="sp"></span><button class="btn xs">ir</button><button class="x">✕</button></div>`;
+d.querySelector('.btn').onclick=()=>vid.currentTime=Math.max(0,z.t-0.5);
+d.querySelector('.x').onclick=()=>{zooms.splice(zooms.indexOf(z),1);renderZooms();renderTimeline()};box.appendChild(d)});
+$('zoomCount').textContent=zooms.length?zooms.length:'';
+}
+$('zoomHereBtn').onclick=()=>{zooms.push({t:vid.currentTime,a:num('zoomAmt'),d:num('zoomDur')});renderZooms();renderTimeline();toast('Zoom marcado em '+fmt(vid.currentTime))};
+$('clearZoom').onclick=()=>{zooms=[];renderZooms();renderTimeline()};
+$('autoZoom').onclick=async()=>{
+const b=$('autoZoom');b.disabled=true;b.innerHTML='<span class="spin"></span>Analisando áudio…';
+try{await analyze();
+const sm=smooth(env,3),base=smooth(env,50),thr=percentile(sm,0.7);let added=0;
+segs.forEach(s=>{let last=-99;const cand=[];
+for(let i=Math.floor(s.s/ENV_DT);i<Math.floor(s.e/ENV_DT)&&i<sm.length;i++){
+const t=i*ENV_DT;if(sm[i]>thr&&sm[i]>base[i]*1.35&&sm[i]>=sm[i-1]&&sm[i]>=(sm[i+1]||0))cand.push({t,v:sm[i]})}
+cand.sort((a,b)=>b.v-a.v);const max=Math.max(1,Math.floor((s.e-s.s)/6)),picked=[];
+for(const c of cand){if(picked.length>=max)break;if(picked.every(p=>Math.abs(p.t-c.t)>3.5)&&c.t>s.s+0.5&&c.t<s.e-0.8)picked.push(c)}
+picked.forEach(p=>{if(!zooms.some(z=>Math.abs(z.t-p.t)<2)){zooms.push({t:Math.max(s.s,p.t-0.15),a:num('zoomAmt'),d:num('zoomDur')});added++}})});
+renderZooms();renderTimeline();toast(added?`${added} zooms adicionados ⚡`:'Nenhum pico forte encontrado nos trechos');
+}catch(e){msg(e.message||'Não consegui analisar o áudio deste vídeo.')}
+b.disabled=false;b.textContent='⚡ Zoom automático'};
+function zoomFactor(t){let f=1;
+for(const z of zooms){const a=z.t-0.15,b=z.t+z.d+0.3;if(t<a||t>b)continue;
+let e=t<z.t?(t-a)/0.15:t<z.t+z.d?1:1-(t-z.t-z.d)/0.3;e=Math.max(0,Math.min(1,e));e=e*e*(3-2*e);
+f=Math.max(f,1+z.a*e)}return f}
+function smooth(a,w){const o=new Float32Array(a.length);let s=0;const h=Math.floor(w/2);
+for(let i=0;i<a.length+h;i++){if(i<a.length)s+=a[i];if(i-w>=0)s-=a[i-w];const j=i-h;if(j>=0&&j<a.length)o[j]=s/Math.min(w,i+1)}return o}
+function percentile(a,p){const s=Array.from(a).sort((x,y)=>x-y);return s[Math.floor(p*(s.length-1))]||0}
+let analyzing=null;
+function analyze(){
+if(env)return Promise.resolve(env);if(analyzing)return analyzing;
+analyzing=(async()=>{
+if(!curFile)throw new Error('Abra um vídeo primeiro.');
+if(curFile.size>1.5e9)throw new Error('Vídeo muito grande para analisar o áudio (acima de 1,5 GB). Corte um pedaço menor antes.');
+const buf=await curFile.arrayBuffer();
+const oac=new OfflineAudioContext(1,8000,8000);
+let ad;try{ad=await oac.decodeAudioData(buf)}catch(e){throw new Error('Não consegui ler o áudio deste vídeo (pode não ter áudio).')}
+const ch=[...Array(ad.numberOfChannels).keys()].map(i=>ad.getChannelData(i));
+const step=Math.round(ad.sampleRate*ENV_DT),n=Math.floor(ad.length/step),out=new Float32Array(n);
+for(let i=0;i<n;i++){let s=0;for(const c of ch)for(let j=i*step;j<(i+1)*step;j+=2)s+=c[j]*c[j];out[i]=Math.sqrt(s/(step/2*ch.length))}
+const p=percentile(out,0.98)||1;for(let i=0;i<n;i++)out[i]=Math.min(1.2,out[i]/p);
+env=out;drawHeat();return env})();
+analyzing.finally(()=>analyzing=null);return analyzing;
+}
+function hotWindows(L,k){
+const sm=smooth(env,10),n=sm.length,w=Math.round(L/ENV_DT),res=[];
+if(n<=w)return[{s:0,e:vid.duration,score:1}];
+const scores=[];
+for(let i=0;i+w<n;i+=10){let sum=0,mx=0;for(let j=i;j<i+w;j++){sum+=sm[j];if(sm[j]>mx)mx=sm[j]}scores.push({i,v:sum/w*0.6+mx*0.4})}
+scores.sort((a,b)=>b.v-a.v);
+for(const c of scores){if(res.length>=k)break;const s=c.i*ENV_DT;if(res.every(r=>s+L<=r.s||s>=r.e))res.push({s,e:Math.min(vid.duration,s+L),score:c.v})}
+return res;
+}
+function teaserUI(){const ti=teaserItem();$('teaserDurTxt').textContent=num('teaserDur')+' s';
+$('teaserInfo').textContent=!$('teaserOn').checked?'Desativada.':ti?`Chamada: ${fmt(ti.s)} → ${fmt(ti.e)} · o vídeo final fica com ${fmt(totalDur())}`:'Escolhendo o momento…';renderTimeline()}
+async function autoTeaser(silent){if(!loaded||!segs.length)return;const d=num('teaserDur');let best=null;
+try{await analyze();const sm=smooth(env,6);
+segs.forEach(s=>{for(let i=Math.ceil(s.s/ENV_DT);i<Math.floor(s.e/ENV_DT)&&i<sm.length;i++)if(!best||sm[i]>best.v)best={v:sm[i],t:i*ENV_DT,seg:s}})}catch(e){}
+if(!best){const s=segs.reduce((a,b)=>b.e-b.s>a.e-a.s?b:a);best={t:(s.s+s.e)/2,seg:s}}
+const sg=best.seg;teaser.s=Math.max(sg.s,Math.min(Math.max(sg.s,sg.e-d),best.t-d*0.6));teaser.set=true;
+if(!$('teaserOn').checked)$('teaserOn').checked=true;teaserUI();if(!silent)toast('Chamada escolhida no pico do corte ⚡ — clique em "Ver do início"')}
+$('teaserOn').onchange=()=>{if($('teaserOn').checked&&!teaser.set)autoTeaser();else teaserUI()};
+$('teaserAuto').onclick=()=>autoTeaser();
+$('teaserHere').onclick=()=>{teaser.s=Math.max(0,Math.min(vid.currentTime,vid.duration-num('teaserDur')));teaser.set=true;$('teaserOn').checked=true;teaserUI();toast('Chamada começa em '+fmt(teaser.s))};
+$('teaserPrev').onclick=()=>{if(!teaserItem())return toast('Ative a chamada primeiro');playFromTop()};
+$('teaserDur').oninput=teaserUI;
+let prevSegs=null;
+$('silBtn').onclick=async()=>{
+const b=$('silBtn');b.disabled=true;b.innerHTML='<span class="spin"></span>Analisando…';
+try{await analyze();
+const sm=smooth(env,2),vals=[];segs.forEach(s=>{for(let i=Math.floor(s.s/ENV_DT);i<Math.floor(s.e/ENV_DT)&&i<sm.length;i++)vals.push(sm[i])});
+const floor=percentile(vals,0.08),med=percentile(vals,0.6),thr=floor+(med-floor)*num('silSens'),minP=num('silMin'),pad=0.12;
+const before=totalDur(),out=[];
+segs.forEach(s=>{let cut=[],runStart=null;const i0=Math.floor(s.s/ENV_DT),i1=Math.min(sm.length,Math.ceil(s.e/ENV_DT));
+for(let i=i0;i<=i1;i++){const quiet=i<i1&&sm[i]<thr;
+if(quiet&&runStart===null)runStart=i;
+if(!quiet&&runStart!==null){const a=runStart*ENV_DT,z=i*ENV_DT;if(z-a>=minP)cut.push([Math.max(s.s,a+pad),Math.min(s.e,z-pad)]);runStart=null}}
+let p=s.s;cut.forEach(([a,z])=>{if(a-p>=0.25)out.push({s:p,e:a});p=Math.max(p,z)});if(s.e-p>=0.25)out.push({s:p,e:s.e})});
+if(!out.length){toast('Tudo ficaria cortado. Diminua a sensibilidade.');}
+else{prevSegs=segs.map(x=>({...x}));segs=out;sel=0;$('silUndo').disabled=false;refreshAll();
+const rem=before-totalDur();toast(rem>0.05?`Removidos ${rem.toFixed(1)}s de silêncio (${segs.length} trechos) ✂️`:'Não achei pausas com essa sensibilidade')}
+}catch(e){msg(e.message||'Não consegui analisar o áudio.')}
+b.disabled=false;b.textContent='Remover silêncios'};
+$('silUndo').onclick=()=>{if(!prevSegs)return;segs=prevSegs;prevSegs=null;sel=0;$('silUndo').disabled=true;refreshAll();toast('Trechos restaurados')};
+function chunkCaps(list){const out=[];let n=0;
+list.forEach(c=>{const w=String(c.t).trim().split(/\s+/).filter(Boolean);if(!w.length)return;if(w.length<=4){out.push(c);return}
+let chunks=[];String(c.t).trim().split(/(?<=[.?!])\s+/).forEach(sn=>{const ws=sn.split(/\s+/).filter(Boolean);for(let i=0;i<ws.length;){const left=ws.length-i,take=left<=4?left:left===5?3:4;chunks.push(ws.slice(i,i+take));i+=take}});
+chunks=chunks.reduce((acc,ch)=>{const last=acc[acc.length-1];if(last&&ch.length===1&&last.length<=4&&(last.join(' ')+ch[0]).length<=28)last.push(ch[0]);else acc.push(ch);return acc},[]);
+const tot=w.join(' ').length,d=c.e-c.s;let acc=c.s;
+chunks.forEach(ch=>{const txt=ch.join(' '),dd=d*(txt.length+1)/(tot+chunks.length);out.push({s:acc,e:acc+dd,t:txt});acc+=dd});n++});
+return{out,n}}
+$('splitCaps').onclick=()=>{const r=chunkCaps(caps);caps=r.out;renderCaps();renderTimeline();toast(r.n?`${r.n} legenda(s) quebrada(s) em frases curtas`:'As legendas já estão curtas')};
+function setCaps(list,label){
+const inSegs=c=>segs.some(s=>c.e>s.s&&c.s<s.e);
+list=list.map(c=>({...c,t:applyDict(String(c.t))}));
+const r=chunkCaps(list.filter(c=>c.e>c.s&&String(c.t).trim()));capMaster=r.out;capSig=cutSig();let out=r.out.filter(inCutCap);
+if(!silentCaps){if(!out.length)toast(`${label}: legendas prontas, mas nenhuma fala cai dentro do corte`);else toast(`${out.length} legendas criadas ${label} 💬`)}
+caps=out;capInfo();renderCaps();renderTimeline();$('caps').closest('details').open=true;
+if($('bleepAutoOn').checked)setTimeout(()=>autoBleep(true),50)}
+function parseTime(x){const p=x.split(':').map(Number);return p.reduce((a,v)=>a*60+v,0)}
+$('trCapBtn').onclick=()=>{
+const raw=$('aiTr').value.trim();
+if(!raw){document.querySelector('details.ai').open=true;$('aiTr').focus();$('aiTr').scrollIntoView({behavior:'smooth',block:'center'});
+return toast('Cole a transcrição do YouTube no campo destacado')}
+if(!capsFromTranscript(false))msg('Não reconheci tempos na transcrição. Copie do YouTube com os tempos (ex.: 1:23 seguido do texto).')};
+function capsFromTranscript(silent){const raw=$('aiTr').value.trim();if(!raw)return false;
+const ent=parseTranscript(raw);
+const list=ent.filter(e=>e.text.trim()).map((e,i,a)=>({s:e.t,e:Math.min(i+1<a.length?a[i+1].t:e.t+4,e.t+8),t:e.text.replace(/\[\s*_+\s*\]/g,' *** ').replace(/\[[^\]]*\]/g,'').replace(/\s{2,}/g,' ').trim()}));
+if(!list.length)return false;
+silentCaps=silent;setCaps(list,'da transcrição');silentCaps=false;
+if(silent)toast(`💬 ${caps.length} legendas do corte prontas`);return true}
+function parseTranscript(raw){
+const ent=[];let cur=null;
+raw.split(/\r?\n/).forEach(line=>{line=line.trim();if(!line)return;
+let m=line.match(/^(\d{1,2}(?::\d{2}){1,2})\s*(.*)$/);
+if(m&&!/^\d+\s*(segundo|minuto|hora|second|minute|hour)/i.test(line)){cur={t:parseTime(m[1]),text:(m[2]||'').replace(/^\s*(\d+\s*horas?)?[,\s]*(e\s+)?(\d+\s*minutos?)?[,\s]*(e\s+)?(\d+\s*segundos?)?/i,'')};ent.push(cur);return}
+if(/^\d+\s*(segundos?|minutos?|horas?|seconds?|minutes?|hours?)(,?\s*\d+\s*(segundos?|minutos?|seconds?|minutes?))*$/i.test(line))return;
+if(cur)cur.text+=(cur.text?' ':'')+line});
+return ent}
+let bleeps=[];
+const BAD=/^(merda|bosta|porra|caralho|caralha|cacete|fod[ea]\w*|fudeu|fodeu|fodido|fodida|puta|puto|putaria|buceta|cu|cuzão|arrombad[oa]|viad[oa]|desgraça|desgraçad[oa]|piroca|pica|filh[oa]\s*da\s*puta)$/i;
+function censorText(t){if(!$('capCensor').checked)return t;
+return t.split(/(\s+)/).map(w=>{const core=w.replace(/[.,!?;:"'()]/g,'');if(core&&BAD.test(core)){const c=core;return w.replace(c,c.length<=2?c[0]+'*':c[0]+'*'.repeat(c.length-2)+c[c.length-1])}return w}).join('')}
+function renderBleeps(){
+const box=$('bleepList');box.innerHTML='';bleeps.sort((a,b)=>a.t-b.t);
+bleeps.forEach(b=>{const d=document.createElement('div');d.className='item';
+d.innerHTML=`<div class="r">🔇 <b>${fmt(b.t)}</b><span class="hint">${b.est?'sugerido':''}</span><span class="sp"></span><button class="btn xs" data-a="m">◀</button><button class="btn xs" data-a="p">▶</button><button class="btn xs" data-a="o">ouvir</button><button class="x" data-a="x">✕</button></div>`;
+d.onclick=ev=>{const a=ev.target.dataset&&ev.target.dataset.a;if(!a)return;
+if(a==='m')b.t=Math.max(0,b.t-0.2);else if(a==='p')b.t+=0.2;
+else if(a==='x')bleeps.splice(bleeps.indexOf(b),1);
+else if(a==='o'){ensureAudio();actx&&actx.resume();vid.currentTime=Math.max(0,b.t-1.5);vid.play();setTimeout(()=>{if(vid.currentTime>b.t+b.d)vid.pause()},(b.d+3)*1000)}
+if(a!=='o'){b.est=b.est&&a!=='m'&&a!=='p';renderBleeps()}};
+box.appendChild(d)});
+$('bleepCount').textContent=bleeps.length||'';renderTimeline()}
+$('bleepHere').onclick=()=>{const t=Math.max(0,vid.currentTime-0.25);bleeps.push({t,d:num('bleepDur')});renderBleeps();$('bleepList').closest('details').open=true;toast('Bip marcado em '+fmt(t))};
+$('bleepClear').onclick=()=>{bleeps=[];renderBleeps()};
+$('bleepTr').onclick=()=>{
+const raw=$('aiTr').value.trim();
+if(!raw){document.querySelector('details.ai').open=true;$('aiTr').focus();return toast('Cole a transcrição do YouTube no campo do ✨ Viralizar')}
+const ent=parseTranscript(raw),d=num('bleepDur'),inCut=t=>segs.some(s=>t>=s.s-1&&t<=s.e+1)||(teaserItem()&&t>=teaser.s-1&&t<=teaser.s+num('teaserDur')+1);let n=0;
+ent.forEach((e,i)=>{const end=Math.min(i+1<ent.length?ent[i+1].t:e.t+5,e.t+9);
+const toks=e.text.replace(/\[\s*_+\s*\]/g,' §B§ ').replace(/\[[^\]]*\]/g,' ').split(/\s+/).filter(Boolean);
+toks.forEach((w,k)=>{const core=w.replace(/[.,!?;:"'()]/g,'');if(w==='§B§'||BAD.test(core)){const t=e.t+(k+0.5)/toks.length*(end-e.t)-d/2;
+if(inCut(t)&&!bleeps.some(b=>Math.abs(b.t-t)<0.4)){bleeps.push({t:Math.max(0,t),d,est:true});n++}}})});
+renderBleeps();$('bleepList').closest('details').open=true;
+toast(n?`${n} bip(s) sugerido(s). Ouça cada um e ajuste ◀ ▶`:'Não achei palavrões da transcrição dentro do corte')};
+$('srtBtn').onclick=()=>$('srtFile').click();
+$('srtFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;const txt=await f.text();e.target.value='';
+const ts=x=>{const m=x.trim().replace(',','.').split(':');return m.length===3?(+m[0])*3600+(+m[1])*60+(+m[2]):(+m[0])*60+(+m[1])};
+const list=[];txt.replace(/\r/g,'').split(/\n\n+/).forEach(b=>{const lines=b.split('\n');const i=lines.findIndex(l=>l.includes('-->'));if(i<0)return;
+const [a,z]=lines[i].split('-->');const t=lines.slice(i+1).join(' ').replace(/<[^>]+>/g,'').trim();if(t)list.push({s:ts(a),e:ts(z.trim().split(/\s/)[0]),t})});
+if(!list.length)return msg('Arquivo de legenda vazio ou em formato desconhecido.');setCaps(list,'do arquivo')};
+let job='export',srStop=null;
+$('srBtn').onclick=async()=>{
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(!SR)return msg('Este navegador não tem reconhecimento de fala. Use o Google Chrome atualizado no computador, ou use a transcrição do YouTube / um arquivo .srt.');
+ensureAudio();if(!actx)return msg('Não consegui acessar o áudio do vídeo.');await actx.resume();vid.pause();
+const srDest=actx.createMediaStreamDestination();vGain.connect(srDest);const track=srDest.stream.getAudioTracks()[0];
+const got=[];let live='',fatal=null,active=true,recog=null,firstSeen={},lastT=0;
+$('msgBox').style.display='none';$('result').style.display='none';$('progress').style.display='block';
+$('pTitle').textContent='Gerando legendas…';$('pHint').textContent='O Chrome está ouvindo os trechos do corte. Deixe esta aba aberta e visível; o som fica mudo enquanto isso.';
+$('ptLive').style.display='block';$('ptLive').textContent='Ouvindo…';$('overlay').classList.add('on');
+const startRec=()=>{recog=new SR();recog.lang='pt-BR';recog.continuous=true;recog.interimResults=true;
+recog.onresult=ev=>{const now=vid.currentTime;let interim='';
+for(let i=ev.resultIndex;i<ev.results.length;i++){const r=ev.results[i],key=recog._id+':'+i,txt=r[0].transcript.trim();
+if(!(key in firstSeen))firstSeen[key]=Math.max(lastT,now-1.2);
+if(r.isFinal){if(txt){const s0=firstSeen[key],e0=Math.max(s0+0.4,now-0.35);got.push({s:s0,e:e0,t:txt});lastT=e0}}
+else interim+=txt+' '}
+$('ptLive').textContent=(got.slice(-3).map(g=>g.t).join(' · ')+(interim?' · '+interim:'')).slice(-300)||'Ouvindo…'};
+recog.onerror=ev=>{if(['not-allowed','service-not-allowed','audio-capture','language-not-supported','network'].includes(ev.error))fatal=ev.error};
+recog.onend=()=>{if(active&&!fatal)try{startRec()}catch(e){fatal='start'}};
+recog._id=Math.random().toString(36).slice(2,7);
+try{recog.start(track)}catch(e){fatal=e&&e.name==='TypeError'?'old':'start'}};
+if(spk)spk.gain.value=0;job='tr';exporting=true;expBase=0;canceled=false;startRec();
+curList=segs.slice();try{for(let i=0;i<segs.length&&!canceled&&!fatal;i++){sel=i;pi=i;renderTimeline();await seekTo(segs[i].s);
+const done=new Promise(r=>segDone=r);await vid.play();await done;vid.pause();expBase+=segs[i].e-segs[i].s}
+if(!fatal&&!canceled)await new Promise(r=>setTimeout(r,1500));
+}catch(e){console.warn(e)}
+curList=null;pi=-1;active=false;try{recog&&recog.stop()}catch(e){}
+await new Promise(r=>setTimeout(r,600));
+exporting=false;job='export';if(spk)spk.gain.value=1;try{vGain.disconnect(srDest)}catch(e){}track.stop();
+$('ptLive').style.display='none';$('pTitle').textContent='Exportando seu corte…';$('pHint').textContent='O corte é gravado em tempo real. Deixe esta aba aberta e visível até terminar.';
+$('overlay').classList.remove('on');
+if(canceled&&!got.length)return;
+if(fatal&&!got.length){const why={'not-allowed':'o navegador bloqueou o reconhecimento de fala nesta página','service-not-allowed':'o serviço de reconhecimento de fala não está liberado','network':'sem conexão com o serviço de fala do Chrome','language-not-supported':'o português não está disponível no reconhecimento deste navegador','old':'seu Chrome é antigo demais para ouvir o áudio de um vídeo (atualize o Chrome)','audio-capture':'o navegador não conseguiu ouvir o áudio do vídeo'}[fatal]||'o reconhecimento de fala não iniciou';
+return msg(`Não deu para gerar automático: ${why}. Alternativas que sempre funcionam: "Da transcrição do YouTube" ou importar um .srt (ex.: legendas automáticas do CapCut).`)}
+if(!got.length)return msg('Não reconheci nenhuma fala nos trechos. Confira se o vídeo tem voz e se o volume do vídeo não está zerado.');
+setCaps(got,'automaticamente')};
+let cvDrag=null;
+function cvPoint(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
+cv.addEventListener('pointerdown',e=>{if(!loaded||exporting)return;const p=cvPoint(e);
+cvDrag={...p,panel:st.mode==='split'?(p.y<H*num('splitR')?'top':'bot'):null};cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing'});
+cv.addEventListener('pointermove',e=>{if(!cvDrag)return;const p=cvPoint(e),dx=p.x-cvDrag.x,dy=p.y-cvDrag.y;cvDrag.x=p.x;cvDrag.y=p.y;
+const clamp=v=>Math.max(-1,Math.min(1,v));
+if(cvDrag.panel){const g=splitGeom(cvDrag.panel),vw=vid.videoWidth,vh=vid.videoHeight,top=cvDrag.panel==='top';
+const nx=(top?st.split.tx:st.split.bx)-dx*(g.cw/g.pw)/vw,ny=(top?st.split.ty:st.split.by)-dy*(g.ch/g.ph)/vh;
+const lim=(v,c,full)=>Math.max(c/full/2,Math.min(1-c/full/2,v));
+if(top){st.split.tx=lim(nx,g.cw,vw);st.split.ty=lim(ny,g.ch,vh)}else{st.split.bx=lim(nx,g.cw,vw);st.split.by=lim(ny,g.ch,vh)}}
+else{const ox=geom.dw-W,oy=geom.dh-H;
+$('panX').value=clamp(num('panX')+(ox>1?-dx*2/ox:dx*2/Math.max(1,-ox)));
+$('panY').value=clamp(num('panY')+(oy>1?-dy*2/oy:dy*2/Math.max(1,-oy)))}});
+cv.addEventListener('pointerup',()=>{cvDrag=null;cv.style.cursor=''});
+cv.addEventListener('wheel',e=>{if(!loaded)return;e.preventDefault();const p=cvPoint(e);
+const id=st.mode==='split'?(p.y<H*num('splitR')?'topZ':'botZ'):'zoom',el=$(id);
+el.value=Math.max(+el.min,Math.min(+el.max,num(id)*(e.deltaY<0?1.06:1/1.06)))},{passive:false});
+$('logoBtn').onclick=()=>$('logoFile').click();
+$('logoFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();
+im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=256;const s=Math.min(im.width,im.height);
+c.getContext('2d').drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,256,256);setLogo(c.toDataURL('image/png'))};im.src=URL.createObjectURL(f)};
+function setLogo(d){logoData=d;if(!d){logoImg=null;return}const im=new Image();im.onload=()=>logoImg=im;im.src=d}
+$('logoClear').onclick=()=>setLogo(null);
+$('resetFrame').onclick=()=>{$('zoom').value=1;$('panX').value=0;$('panY').value=0};
+function wrap(text,maxW){const out=[];text.split('\n').forEach(par=>{let line='';
+par.split(/\s+/).forEach(w=>{const t=line?line+' '+w:w;if(ctx.measureText(t).width>maxW&&line){out.push(line);line=w}else line=t});out.push(line)});return out}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect?ctx.roundRect(x,y,w,h,r):ctx.rect(x,y,w,h)}
+function draw(){
+const k=Math.min(W,H)/1080,t=vid.currentTime;
+ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+if(loaded&&vid.videoWidth&&st.mode==='split'){
+const f=zoomFactor(t);
+['top','bot'].forEach(p=>{const g=splitGeom(p,f);ctx.drawImage(vid,g.sx,g.sy,g.cw,g.ch,g.px,g.py,g.pw,g.ph)});
+const yy=H*num('splitR'),gr=ctx.createLinearGradient(0,0,W,0);gr.addColorStop(0,'#25f4ee');gr.addColorStop(1,'#fe2c55');
+ctx.fillStyle=gr;ctx.fillRect(0,yy-4*k,W,8*k);
+}else if(loaded&&vid.videoWidth){
+const vw=vid.videoWidth,vh=vid.videoHeight,z=num('zoom'),px=num('panX'),py=num('panY');
+if(st.mode==='blur'){const sc=Math.max(W/vw,H/vh)/12;small.width=Math.round(W/12);small.height=Math.round(H/12);
+sctx.filter='blur(3px)';sctx.drawImage(vid,(small.width-vw*sc)/2,(small.height-vh*sc)/2,vw*sc,vh*sc);
+ctx.drawImage(small,-W*.05,-H*.05,W*1.1,H*1.1);ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(0,0,W,H)}
+const s=(st.mode==='cover'?Math.max(W/vw,H/vh):Math.min(W/vw,H/vh))*z;
+let dw=vw*s,dh=vh*s,x=(W-dw)/2-px*Math.max(0,dw-W)/2,y=(H-dh)/2-py*Math.max(0,dh-H)/2;
+if(dh<H)y=(H-dh)/2+py*(H-dh)/2;if(dw<W)x=(W-dw)/2+px*(W-dw)/2;
+const f=zoomFactor(t);
+if(f>1){const cx=W/2,cy=y+dh*0.42;x=cx-(cx-x)*f;y=cy-(cy-y)*f;dw*=f;dh*=f}
+ctx.drawImage(vid,x,y,dw,dh);geom={dw:dw/f,dh:dh/f};
+}
+const title=$('title').value.trim();
+if(title){const fs=num('titleSize')*k;ctx.font=`italic 800 ${fs}px Poppins`;ctx.textAlign='center';ctx.textBaseline='middle';
+const lines=wrap(title,W*0.84),lh=fs*1.15,bh=lines.length*lh+fs*.5,cy=num('titleY')*H,top=Math.max(10,Math.min(H-bh-10,cy-bh/2));
+if($('titleBgOn').checked){const mw=Math.max(...lines.map(l=>ctx.measureText(l).width))+fs*.9;ctx.fillStyle=$('titleBg').value;rr(W/2-mw/2,top,mw,bh,fs*.3);ctx.fill()}
+else{ctx.lineWidth=fs*.16;ctx.strokeStyle='#000';ctx.lineJoin='round';lines.forEach((l,i)=>ctx.strokeText(l,W/2,top+fs*.25+lh*(i+.5)))}
+ctx.fillStyle=$('titleColor').value;lines.forEach((l,i)=>ctx.fillText(l,W/2,top+fs*.25+lh*(i+.5)))}
+caps.forEach(c=>{const on=t>=c.s&&t<c.e&&c.t.trim();c.el&&c.el.classList.toggle('act',!!on);if(on)drawCaption(c,t,k)});
+const pos=$('wmPos').value,m=40*k,wm=$('wm').value.trim(),ls=logoImg?num('logoSize')*k:0;
+ctx.globalAlpha=num('wmOp');const fs=34*k;ctx.font=`600 ${fs}px Poppins`;ctx.textBaseline='middle';
+const tw=wm?ctx.measureText(wm).width:0,gap=wm&&logoImg?14*k:0,totalW=ls+gap+tw,hh=Math.max(ls,fs);
+let bx=pos.includes('l')?m:pos.includes('r')?W-m-totalW:(W-totalW)/2,by=pos[0]==='t'?m+(st.aspect==='9:16'?40*k:0):pos[0]==='b'?H-m-hh:(H-hh)/2;
+if(st.aspect==='9:16'){const kk=H/1920;if(pos[0]==='t')by=170*kk;else if(pos[0]==='b'){by=1480*kk-hh;if(pos.includes('r'))bx=W-170*kk-totalW}}
+if(logoImg){ctx.save();ctx.beginPath();ctx.arc(bx+ls/2,by+hh/2,ls/2,0,Math.PI*2);ctx.clip();ctx.drawImage(logoImg,bx,by+(hh-ls)/2,ls,ls);ctx.restore()}
+if(wm){ctx.textAlign='left';ctx.lineWidth=fs*.15;ctx.strokeStyle='rgba(0,0,0,.6)';ctx.strokeText(wm,bx+ls+gap,by+hh/2);ctx.fillStyle='#fff';ctx.fillText(wm,bx+ls+gap,by+hh/2)}
+ctx.globalAlpha=1;
+const cit=curList&&curList[pi];
+if(cit&&cit.teaser&&$('teaserLabelOn').checked&&$('teaserTxt').value.trim()){
+const txt=$('teaserTxt').value.trim(),fs2=58*k;ctx.font=`italic 800 ${fs2}px Poppins`;ctx.textAlign='center';ctx.textBaseline='middle';
+const tw2=ctx.measureText(txt).width+fs2*1.2,yy=H*(st.aspect==='9:16'?0.24:0.2),pulse=1+0.04*Math.sin(performance.now()/120);
+ctx.save();ctx.translate(W/2,yy);ctx.scale(pulse,pulse);ctx.fillStyle='#ffd60a';rr(-tw2/2,-fs2*0.8,tw2,fs2*1.6,fs2*0.8);ctx.fill();
+ctx.fillStyle='#000';ctx.fillText(txt,0,2*k);ctx.restore()}
+const fl=(performance.now()-flashAt)/350;if(fl<1){ctx.fillStyle=`rgba(255,255,255,${0.6*(1-fl)})`;ctx.fillRect(0,0,W,H)}
+if($('progOn').checked&&loaded&&segs.length){const tot=totalDur()||1,fr=Math.max(0,Math.min(1,outPos()/tot)),bh=14*k;
+ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(0,H-bh,W,bh);
+const gr=ctx.createLinearGradient(0,0,W,0);gr.addColorStop(0,'#25f4ee');gr.addColorStop(1,'#fe2c55');ctx.fillStyle=gr;ctx.fillRect(0,H-bh,W*fr,bh)}
+if(!exporting&&$('safeOn').checked&&st.aspect==='9:16')drawSafe();
+}
+let geom={dw:W,dh:H};
+function splitGeom(p,f=1){
+const vw=vid.videoWidth,vh=vid.videoHeight,r=num('splitR'),top=p==='top';
+const px=0,py=top?0:Math.round(H*r),pw=W,ph=top?Math.round(H*r):H-Math.round(H*r);
+const z=(top?num('topZ'):num('botZ'))*f,cx=top?st.split.tx:st.split.bx,cy=top?st.split.ty:st.split.by;
+let cw=Math.min(vw,vh*pw/ph)/z,ch=cw*ph/pw;if(ch>vh){ch=vh;cw=ch*pw/ph}
+const sx=Math.max(0,Math.min(vw-cw,cx*vw-cw/2)),sy=Math.max(0,Math.min(vh-ch,cy*vh-ch/2));
+return{sx,sy,cw,ch,px,py,pw,ph}}
+function capTimes(c,words){const wts=words.map(w=>w.length+2),tot=wts.reduce((a,b)=>a+b,0),d=c.e-c.s;let acc=c.s;
+return wts.map(w=>{const s0=acc;acc+=d*w/tot;return[s0,acc]})}
+function drawCaption(c,t,k){
+let txt=censorText(c.t.trim());if($('capUpper').checked)txt=txt.toUpperCase();
+const style=$('capStyle').value,fs=num('capSize')*k,cy=num('capY')*H,base=$('capColor').value,hi=$('capHi').value,stroke=$('capStroke').value;
+const font=sz=>st.font==='Anton'?`${sz*1.1}px Anton`:`800 ${sz}px Poppins`;
+ctx.font=font(fs);ctx.textBaseline='middle';ctx.lineJoin='round';ctx.strokeStyle=stroke;
+if(style==='phrase'){ctx.textAlign='center';ctx.lineWidth=fs*.2;const lines=wrap(txt,W*0.86),lh=fs*1.2;
+lines.forEach((l,j)=>ctx.strokeText(l,W/2,cy+(j-(lines.length-1)/2)*lh));ctx.fillStyle=base;
+lines.forEach((l,j)=>ctx.fillText(l,W/2,cy+(j-(lines.length-1)/2)*lh));return}
+const words=txt.split(/\s+/),tm=capTimes(c,words);let wi=tm.findIndex(([a,b])=>t>=a&&t<b);if(wi<0)wi=words.length-1;
+const since=t-tm[wi][0];
+if(style==='single'){const sz=fs*1.5,s2=since<0.12?0.7+0.45*(since/0.12):1.15-0.15*Math.min(1,(since-0.12)/0.15);
+ctx.font=font(sz);ctx.textAlign='center';ctx.save();ctx.translate(W/2,cy);ctx.scale(s2,s2);
+ctx.lineWidth=sz*.2;ctx.strokeText(words[wi],0,0);ctx.fillStyle=hi;ctx.fillText(words[wi],0,0);ctx.restore();return}
+// karaoke
+ctx.textAlign='left';const sp=ctx.measureText(' ').width+fs*0.22,maxW=W*0.86,lines=[];let cur=[],cw=0;
+words.forEach((w,i)=>{const ww=ctx.measureText(w).width;if(cur.length&&cw+sp+ww>maxW){lines.push({items:cur,w:cw});cur=[];cw=0}cw+=(cur.length?sp:0)+ww;cur.push({w,i,ww})});
+if(cur.length)lines.push({items:cur,w:cw});
+const lh=fs*1.22;ctx.lineWidth=fs*.2;
+lines.forEach((L,j)=>{let x=W/2-L.w/2;const y=cy+(j-(lines.length-1)/2)*lh;
+L.items.forEach(it=>{const act=it.i===wi;ctx.save();
+if(act){const pop=since<0.15?1+0.12*(since/0.15):1.08-0.03*Math.min(1,(since-0.15)/0.2);ctx.translate(x+it.ww/2,y);ctx.scale(pop,pop);ctx.translate(-(x+it.ww/2),-y)}
+ctx.strokeText(it.w,x,y);ctx.fillStyle=act?hi:base;ctx.fillText(it.w,x,y);ctx.restore();x+=it.ww+sp})});
+}
+function loop(){
+if(bGain&&loaded){const t=vid.currentTime,on=!vid.paused&&bleeps.some(b=>t>=b.t&&t<b.t+b.d);
+if(on!==bleepOn){bleepOn=on;const now=actx.currentTime;bGain.gain.setTargetAtTime(on?0:1,now,0.008);
+toneGain.gain.setTargetAtTime(on&&$('bleepType').value==='beep'?0.28:0,now,0.008)}}
+if(loaded&&!vid.paused){const t=vid.currentTime;if(t>lastT&&t-lastT<0.5)zooms.forEach(z=>{const a=z.t-0.12;if(lastT<a&&t>=a)playWhoosh(0.6)});lastT=t}else if(loaded)lastT=vid.currentTime;
+if(loaded&&segs.length){const t=vid.currentTime,s=segs[sel];
+if(exporting){exportTick()}
+else if(!vid.paused&&curList&&curList[pi]){const it=curList[pi];
+if(t>=it.e-0.02&&t<it.e+1){
+const go=k=>{pi=k;const n=curList[k];if(!n.teaser)sel=k-(curList[0].teaser?1:0);if(it.teaser)flashNow();vid.currentTime=n.s;renderTimeline();renderSegList()};
+if(pi<curList.length-1)go(pi+1);else if($('loop').checked)go(0);else vid.pause()}}
+$('ph').style.left=pct(t)+'%';$('tNow').textContent=fmt(t)}
+draw();requestAnimationFrame(loop);
+}
+if(document.fonts){['800 40px Poppins','italic 800 40px Poppins','40px Anton'].forEach(f=>document.fonts.load(f))}
+requestAnimationFrame(loop);
+const types=['video/mp4;codecs=avc1.640028,mp4a.40.2','video/mp4;codecs=avc1,mp4a','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+const mime=window.MediaRecorder?types.find(t=>MediaRecorder.isTypeSupported(t)):null;
+const ext=mime&&mime.includes('mp4')?'mp4':'webm';
+$('fmtHint').textContent=mime?`Formato de saída: ${ext.toUpperCase()} ${ext==='webm'?'(TikTok, Reels e Shorts aceitam; para MP4 use o Chrome atualizado)':'(pronto pro TikTok, Reels e Shorts)'}`:'Seu navegador não suporta gravação de vídeo. Use o Chrome ou Edge.';
+let exporting=false,rec=null,outBlob=null,canceled=false,segDone=null,expBase=0;
+const wait=ev=>new Promise(r=>vid.addEventListener(ev,r,{once:true}));
+const frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+async function seekTo(t){if(Math.abs(vid.currentTime-t)<0.01)return;const p=wait('seeked');vid.currentTime=t;await p}
+$('exportBtn').onclick=async()=>{
+if(!mime)return msg('Seu navegador não suporta exportar vídeo. Use o Chrome ou Edge no computador.');
+$('pTitle').textContent='Exportando seu corte…';
+const r=await runExport();if(!r){$('overlay').classList.remove('on');return}
+outBlob=r.blob;showResult(r.total)};
+async function runExport(){
+ensureAudio();actx&&await actx.resume();vid.pause();
+$('msgBox').style.display='none';$('qResult').style.display='none';$('progress').style.display='block';$('result').style.display='none';$('overlay').classList.add('on');
+const stream=cv.captureStream(st.fps);if(recDest)recDest.stream.getAudioTracks().forEach(t=>stream.addTrack(t));
+const chunks=[];canceled=false;
+rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:st.quality*1e6,audioBitsPerSecond:192000});
+rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+const stopped=new Promise(r=>rec.onstop=r);
+if($('muteExport').checked&&spk)spk.gain.value=0;
+curList=plist();const o=off();exporting=true;expBase=0;const total=listDur(curList);
+try{
+for(let i=0;i<curList.length&&!canceled;i++){
+pi=i;if(!curList[i].teaser)sel=i-o;renderTimeline();await seekTo(curList[i].s);await frame();
+if(i>0&&curList[i-1].teaser)flashNow();
+if(i===0)rec.start(250);else rec.resume();
+const done=new Promise(r=>segDone=r);await vid.play();await done;vid.pause();
+expBase+=curList[i].e-curList[i].s;
+if(i<curList.length-1&&rec.state==='recording')rec.pause();
+}
+}catch(e){console.warn(e)}
+curList=null;pi=-1;
+if(rec.state!=='inactive')rec.stop();await stopped;
+exporting=false;if(spk)spk.gain.value=1;if(mGain)mGain.gain.value=num('musVol');stream.getVideoTracks().forEach(t=>t.stop());
+if(canceled)return null;
+return{blob:new Blob(chunks,{type:mime.split(';')[0]}),total};
+}
+function exportTick(){
+const l=curList||segs,s=l[Math.max(0,pi)],t=vid.currentTime,total=listDur(l),done=expBase+Math.max(0,Math.min(t,s.e)-s.s);
+$('pbar').style.width=Math.min(100,done/total*100)+'%';$('ptxt').textContent=`${fmt(done)} de ${fmt(total)} · `+(s.teaser?'chamada':`trecho ${sel+1}/${segs.length}`);
+if(job==='export'&&hasMusic()&&mGain){const left=total-done;mGain.gain.value=num('musVol')*Math.max(0,Math.min(1,left/1.2))}
+if(segDone&&(t>=s.e||vid.ended)){const r=segDone;segDone=null;r()}
+}
+$('cancelExp').onclick=()=>{canceled=true;if(segDone){const r=segDone;segDone=null;r()}};
+const outName=()=>`${fileName}_corte_${st.aspect.replace(':','x')}.${ext}`;
+function showResult(total){
+$('progress').style.display='none';$('result').style.display='flex';$('saveMsg').textContent='';$('resPostOut').innerHTML='';
+const u=URL.createObjectURL(outBlob);$('outVid').src=u;
+$('outInfo').textContent=`${outName()} · ${(outBlob.size/1048576).toFixed(1)} MB · ${fmt(total)}`;
+const link=$('saveLink');link.href=u;link.download=outName();
+$('saveBtn').style.display=downloads?'':'none';link.style.display=downloads?'none':'';
+}
+async function saveFile(name,data){
+if(downloads){try{await downloads.save({filename:name,data});return true}catch(e){if(e&&e.code!=='declined')toast('Não foi possível salvar ('+(e&&e.code||'erro')+')');return false}}
+const a=document.createElement('a');a.href=URL.createObjectURL(data instanceof Blob?data:new Blob([data]));a.download=name;a.click();return true}
+$('saveBtn').onclick=async()=>{if(await saveFile(outName(),outBlob))$('saveMsg').textContent='Vídeo salvo! ✅'};
+$('closeRes').onclick=()=>{$('overlay').classList.remove('on');$('outVid').pause()};
+$('thumbBtn').onclick=()=>cv.toBlob(b=>saveFile(`${fileName}_capa.png`,b),'image/png');
+const STYLE_IDS=['credits','tagsFixed','sfxOn','sfxVol','teaserOn','teaserDur','teaserTxt','teaserLabelOn','zoom','panX','panY','splitR','topZ','botZ','progOn','capHi','capStyle','titleSize','titleY','titleColor','titleBg','titleBgOn','capSize','capY','capColor','capStroke','capUpper','wm','wmOp','wmPos','logoSize','zoomAmt','zoomDur','musVol'];
+const BUILTIN={
+'Padrão pe.clipper':{},
+'Podcast (rosa)':{mode:'blur',font:'Poppins',titleBg:'#fe2c55',titleColor:'#ffffff',capColor:'#ffffff',capStroke:'#000000',capY:'0.7'},
+'Live com câmera (tela dividida)':{mode:'split',font:'Poppins',titleBg:'#fe2c55',titleColor:'#ffffff',titleY:'0.4',titleSize:'64',capColor:'#ffffff',capHi:'#25f4ee',capY:'0.62',capStyle:'karaoke',progOn:true},
+'Gameplay (ciano)':{mode:'blur',font:'Anton',titleBg:'#111111',titleColor:'#25f4ee',capColor:'#25f4ee',capStroke:'#000000',capY:'0.8',zoomAmt:'0.35'},
+'Polêmica (amarelo)':{mode:'cover',font:'Anton',titleBg:'#ffd60a',titleColor:'#000000',capColor:'#ffd60a',capStroke:'#000000',capY:'0.74',zoomAmt:'0.3'},
+};
+const DEFAULTS={};STYLE_IDS.forEach(id=>{const e=$(id);DEFAULTS[id]=e.type==='checkbox'?e.checked:e.value});
+Object.assign(DEFAULTS,{aspect:'9:16',mode:'blur',font:'Poppins',logo:null,split:{tx:.85,ty:.2,bx:.5,by:.5}});
+let userPresets={};
+try{userPresets=JSON.parse(localStorage.getItem('peclipper_presets')||'{}')}catch(e){}
+function storePresets(){try{localStorage.setItem('peclipper_presets',JSON.stringify(userPresets))}catch(e){toast('Este navegador não deixou salvar. Use Exportar modelos.')}}
+function currentStyle(){const o={};STYLE_IDS.forEach(id=>{const e=$(id);o[id]=e.type==='checkbox'?e.checked:e.value});
+return Object.assign(o,{aspect:st.aspect,mode:st.mode,font:st.font,logo:logoData,split:{...st.split}})}
+function applyStyle(p){p=Object.assign({},DEFAULTS,p);
+STYLE_IDS.forEach(id=>{if(p[id]===undefined)return;const e=$(id);if(e.type==='checkbox')e.checked=!!p[id];else e.value=p[id]});
+setSeg('aspect','aspect',p.aspect);setAspect();setSeg('mode','mode',p.mode);setSeg('capFont','font',p.font);st.split={...DEFAULTS.split,...(p.split||{})};updModeUI();
+if('logo' in p)setLogo(p.logo);if($('teaserOn').checked&&loaded&&!teaser.set)autoTeaser(true);else teaserUI();if(mGain)mGain.gain.value=num('musVol')}
+function renderPresets(selName){const s=$('presetSel');s.innerHTML='';
+const og1=document.createElement('optgroup');og1.label='Prontos';Object.keys(BUILTIN).forEach(n=>og1.append(new Option(n,'b:'+n)));s.append(og1);
+const names=Object.keys(userPresets);if(names.length){const og2=document.createElement('optgroup');og2.label='Meus modelos';names.forEach(n=>og2.append(new Option(n,'u:'+n)));s.append(og2)}
+if(selName)s.value=selName}
+renderPresets();
+$('presetApply').onclick=()=>{const v=$('presetSel').value,n=v.slice(2);applyStyle(v[0]==='b'?BUILTIN[n]:userPresets[n]);toast('Modelo "'+n+'" aplicado')};
+$('presetSave').onclick=()=>{$('presetNameRow').style.display='flex';$('presetName').focus()};
+$('presetOk').onclick=()=>{const n=$('presetName').value.trim();if(!n)return;userPresets[n]=currentStyle();storePresets();renderPresets('u:'+n);$('presetNameRow').style.display='none';$('presetName').value='';toast('Modelo "'+n+'" salvo')};
+$('presetDel').onclick=()=>{const v=$('presetSel').value;if(v[0]!=='u')return toast('Modelos prontos não podem ser excluídos');delete userPresets[v.slice(2)];storePresets();renderPresets()};
+$('presetExport').onclick=()=>saveFile('peclipper_modelos.json',JSON.stringify(userPresets,null,1));
+$('presetImport').onclick=()=>$('presetFile').click();
+$('presetFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const o=JSON.parse(await f.text());Object.assign(userPresets,o);storePresets();renderPresets();toast(Object.keys(o).length+' modelo(s) importado(s)')}catch(err){toast('Arquivo inválido')}};
+async function grabFrame(t){await seekTo(t);await frame();
+const c=document.createElement('canvas'),s=Math.min(1,720/Math.max(vid.videoWidth,vid.videoHeight));
+c.width=Math.round(vid.videoWidth*s);c.height=Math.round(vid.videoHeight*s);c.getContext('2d').drawImage(vid,0,0,c.width,c.height);
+return new Promise(r=>c.toBlob(r,'image/jpeg',0.8))}
+let aiCtl=null;
+$('aiBtn').onclick=async()=>{
+if(aiCtl){aiCtl.abort();return}
+const L=+$('aiLen').value,out=$('aiOut'),stat=$('aiStatus'),btn=$('aiBtn');
+vid.pause();out.innerHTML='';btn.textContent='Parar';
+try{
+stat.innerHTML='<span class="spin"></span>Medindo a energia do áudio…';
+let cands;
+try{await analyze();cands=hotWindows(L,6)}catch(e){
+const n=6;cands=[...Array(n)].map((_,i)=>{const s=(vid.duration-L)*(i+.5)/n;return{s:Math.max(0,s),e:Math.min(vid.duration,s+L),score:0}})}
+renderHot(cands);
+if(!sample){stat.textContent='Acima estão os trechos com mais energia no áudio. Para títulos, legenda do post e hashtags, abra o editor pelo Claude (as sugestões usam sua conta Claude).';return}
+stat.innerHTML='<span class="spin"></span>Capturando quadros dos melhores momentos…';
+let maxImg=0;try{const lim=await sample.limits();maxImg=lim.images?Math.min(lim.images.maxCount,6):0}catch(e){}
+const imgs=[];const keep=vid.currentTime;
+for(let i=0;i<Math.min(maxImg,cands.length);i++)imgs.push(await grabFrame((cands[i].s+cands[i].e)/2));
+await seekTo(keep);
+const tr=$('aiTr').value.trim().slice(0,120000);
+const prompt=`Você é especialista em cortes virais para TikTok, Reels e Shorts no Brasil.
+Canal do clipador: ${$('wm').value||'@pe.clipper'}
+Contexto do vídeo: ${$('aiCtx').value.trim()||'(não informado)'}
+Público / nicho: ${$('aiNiche').value.trim()||'(não informado)'}
+Duração total do vídeo: ${vid.duration.toFixed(0)} s. Duração ideal do corte: cerca de ${L} s.
+Trechos candidatos, achados por picos de energia no áudio (risadas, gritos, reações, falas intensas):
+${cands.map((c,i)=>`${i+1}) ${c.s.toFixed(1)}–${c.e.toFixed(1)} s · energia ${c.score.toFixed(2)}`).join('\n')}
+${imgs.length?`As ${imgs.length} imagens anexadas são um quadro do meio dos candidatos 1 a ${imgs.length}, na mesma ordem.`:'Sem imagens.'}
+Transcrição (pode estar vazia; tempos no formato do YouTube, mm:ss ou h:mm:ss):
+"""
+${tr||'(sem transcrição)'}
+"""
+${resultsContext()}Tarefa:
+1. Escolha os 3 melhores cortes. Pode ajustar início e fim; com transcrição, comece no gancho (primeira frase forte) e termine numa frase completa. Pode propor um corte fora dos candidatos se a transcrição mostrar algo melhor. Use segundos do vídeo original.
+2. Para cada corte: "gancho" para a faixa de título na tela (no máximo 8 palavras, em MAIÚSCULAS, pode ter 1 emoji), "motivo" (1 frase sobre por que pode viralizar) e "nota" de 1 a 10.
+3. "legenda_post": legenda do post com 2 a 3 linhas, chamando para comentar ou seguir.
+4. "hashtags": 10 hashtags em português, misturando amplas, de nicho e do assunto.
+5. "titulos_alternativos": 3 outros ganchos.
+6. Se houver transcrição, "legendas_tela" para o corte nº 1: frases curtas (até 6 palavras), com inicio e fim em segundos do vídeo original, seguindo o que é falado. Não invente falas. Sem transcrição, deixe a lista vazia.
+Responda só com JSON neste formato:
+{"cortes":[{"inicio":0,"fim":0,"gancho":"","motivo":"","nota":0}],"legenda_post":"","hashtags":["#..."],"titulos_alternativos":[""],"legendas_tela":[{"inicio":0,"fim":0,"texto":""}]}`;
+stat.innerHTML='<span class="spin"></span>O Claude está escolhendo os cortes e escrevendo os textos… (pode levar até 1 minuto)';
+aiCtl=new AbortController();
+const r=await sample.json(prompt,{images:imgs.length?imgs:undefined,signal:aiCtl.signal,modelTier:'default'});
+renderAI(r);stat.textContent='Pronto! Escolha um corte para aplicar no editor.';
+}catch(e){
+const c=e&&e.code;
+stat.textContent=c==='cancelled'?'Cancelado.':c==='not_granted'||c==='sampling_disabled'?'As sugestões do Claude não foram permitidas. Os trechos com mais energia continuam acima.':c==='rate_limited'?'Muitos pedidos seguidos. Tente de novo em alguns minutos.':c==='invalid_json'?'A resposta veio num formato inesperado. Clique de novo para tentar.':'Não consegui gerar as sugestões agora ('+(c||e.message||'erro')+'). Tente de novo.';
+}finally{aiCtl=null;btn.textContent='Encontrar melhores cortes'}
+};
+function useCut(s,e,hook,replace){
+s=Math.max(0,+s||0);e=Math.min(vid.duration,+e||s+30);if(e<=s+0.2)e=Math.min(vid.duration,s+30);
+if(replace){segs=[{s,e}];sel=0}else{segs.push({s,e});sel=segs.length-1}
+if(hook)$('title').value=hook;vid.currentTime=s;pi=-1;curList=null;refreshAll();if($('teaserOn').checked)autoTeaser(true);toast(replace?'Corte aplicado ✂️':'Trecho adicionado');autoCapsForCut(true)}
+function renderHot(cands){
+const out=$('aiOut');const d=document.createElement('div');d.className='card';
+d.innerHTML=`<h4>🔥 Momentos com mais energia no áudio</h4><div class="list">${cands.map((c,i)=>`<div class="r row"><span class="num">${i+1}</span><b>${fmt(c.s)} → ${fmt(c.e)}</b><span class="sp"></span><button class="btn xs" data-i="${i}" data-a="ver">ver</button><button class="btn xs" data-i="${i}" data-a="usar">usar</button></div>`).join('')}</div>`;
+d.onclick=ev=>{const b=ev.target.closest('button');if(!b)return;const c=cands[+b.dataset.i];if(b.dataset.a==='ver'){vid.currentTime=c.s}else useCut(c.s,c.e,null,true)};
+out.appendChild(d);
+}
+function renderAI(r){
+const out=$('aiOut');
+(r.cortes||[]).forEach((c,i)=>{const d=document.createElement('div');d.className='card';
+d.innerHTML=`<div class="row"><span class="num">#${i+1}</span><span class="score">${esc(c.nota)}/10</span><span class="hint">${fmt(+c.inicio)} → ${fmt(+c.fim)} (${Math.round(c.fim-c.inicio)}s)</span></div><h4>${esc(c.gancho)}</h4><div class="hint">${esc(c.motivo)}</div><div class="row"><button class="btn sm pri" data-a="use">Usar este corte</button><button class="btn sm" data-a="add">+ Como trecho</button><button class="btn sm" data-a="ver">Ver</button></div>`;
+d.onclick=ev=>{const a=ev.target.dataset.a;if(a==='use')useCut(c.inicio,c.fim,c.gancho,true);else if(a==='add')useCut(c.inicio,c.fim,null,false);else if(a==='ver')vid.currentTime=+c.inicio||0};
+out.appendChild(d)});
+if(r.legendas_tela&&r.legendas_tela.length){const d=document.createElement('div');d.className='card';
+d.innerHTML=`<h4>💬 Legendas na tela para o corte #1 (${r.legendas_tela.length})</h4><div class="hint">${r.legendas_tela.slice(0,4).map(l=>esc(l.texto)).join(' / ')}…</div><button class="btn sm">Aplicar legendas</button>`;
+d.querySelector('button').onclick=()=>{caps=r.legendas_tela.filter(l=>l.texto).map(l=>({s:+l.inicio||0,e:Math.max((+l.inicio||0)+0.3,+l.fim||0),t:String(l.texto)}));renderCaps();renderTimeline();toast('Legendas aplicadas 💬')};
+out.appendChild(d)}
+if(r.legenda_post){const d=document.createElement('div');d.className='card';
+d.innerHTML=`<h4>📝 Legenda do post</h4><div class="copybox"></div><button class="btn sm">Copiar legenda + hashtags</button>`;
+d.querySelector('.copybox').textContent=r.legenda_post;
+d.querySelector('button').onclick=()=>copy(r.legenda_post+'\n\n'+(r.hashtags||[]).join(' '));out.appendChild(d)}
+if(r.hashtags&&r.hashtags.length){const d=document.createElement('div');d.className='card';
+d.innerHTML=`<h4># Hashtags</h4><div class="chips">${r.hashtags.map(h=>`<span class="chip">${esc(h)}</span>`).join('')}</div><button class="btn sm">Copiar hashtags</button>`;
+d.querySelector('button').onclick=()=>copy(r.hashtags.join(' '));out.appendChild(d)}
+if(r.titulos_alternativos&&r.titulos_alternativos.length){const d=document.createElement('div');d.className='card';
+d.innerHTML=`<h4>💡 Outros ganchos</h4>${r.titulos_alternativos.map((t,i)=>`<div class="row"><span style="flex:1">${esc(t)}</span><button class="btn xs" data-i="${i}">usar</button></div>`).join('')}`;
+d.onclick=ev=>{const b=ev.target.closest('button');if(b){$('title').value=r.titulos_alternativos[+b.dataset.i];toast('Título trocado')}};out.appendChild(d)}
+}
+let lastT=0;
+let sfxGain=null,wbuf=null;
+function sfxSetup(){if(sfxGain||!actx)return;sfxGain=actx.createGain();sfxGain.connect(spk);sfxGain.connect(recDest);
+const sr=actx.sampleRate,n=Math.floor(sr*0.5);wbuf=actx.createBuffer(1,n,sr);const d=wbuf.getChannelData(0);
+for(let i=0;i<n;i++){const x=i/n,env=Math.pow(Math.sin(Math.PI*Math.pow(x,0.7)),2);d[i]=(Math.random()*2-1)*env}}
+function playWhoosh(amt=1){if(!$('sfxOn').checked||!actx)return;sfxSetup();
+const t0=actx.currentTime+0.02,src=actx.createBufferSource();src.buffer=wbuf;
+const bp=actx.createBiquadFilter();bp.type='bandpass';bp.Q.value=1.2;bp.frequency.setValueAtTime(250,t0);bp.frequency.exponentialRampToValueAtTime(3500,t0+0.45);
+const g=actx.createGain();g.gain.value=num('sfxVol')*1.6*amt;src.connect(bp);bp.connect(g);g.connect(sfxGain);src.start(t0)}
+function flashNow(){flashAt=performance.now();playWhoosh(1)}
+function drawSafe(){const k=H/1920;ctx.save();ctx.setLineDash([14*k,10*k]);ctx.lineWidth=3*k;
+const zone=(x,y,w,h,label)=>{ctx.fillStyle='rgba(254,44,85,.16)';ctx.fillRect(x,y,w,h);ctx.strokeStyle='rgba(254,44,85,.8)';ctx.strokeRect(x,y,w,h);
+ctx.fillStyle='rgba(255,255,255,.85)';ctx.font=`600 ${26*k}px Poppins`;ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(label,x+12*k,y+10*k)};
+zone(0,0,W,150*k,'abas do TikTok');
+zone(W-150*k,700*k,150*k,1000*k,'botões');
+zone(0,1500*k,W-150*k,420*k,'nome, legenda e música');
+ctx.restore()}
+const DICT_DEF=[['Mitsubicho','Mitsubishi'],['Mitsubich','Mitsubishi'],['Elipse','Eclipse'],['Nivos','Nivus'],['íã','ímã']];
+let dict=[];try{dict=JSON.parse(localStorage.getItem('peclipper_dict')||'null')||DICT_DEF.slice()}catch(e){dict=DICT_DEF.slice()}
+function storeDict(){try{localStorage.setItem('peclipper_dict',JSON.stringify(dict))}catch(e){}}
+const escRe=x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+function wordRe(from){return new RegExp('(^|[^\\p{L}\\p{N}])('+escRe(from)+')(?=$|[^\\p{L}\\p{N}])','giu')}
+function replaceIn(text,from,to){let n=0;const out=text.replace(wordRe(from),(m,a)=>{n++;return a+to});return{out,n}}
+function applyDict(t){dict.forEach(([a,b])=>{t=replaceIn(t,a,b).out});return t}
+function renderDict(){const box=$('dictList');box.innerHTML='';
+dict.forEach((p,i)=>{const c=document.createElement('span');c.className='chip';c.innerHTML=`${esc(p[0])} → <b>${esc(p[1])}</b> <button class="x" style="font-size:12px">✕</button>`;
+c.querySelector('button').onclick=()=>{dict.splice(i,1);storeDict();renderDict()};box.appendChild(c)})}
+$('frBtn').onclick=()=>{const a=$('frFrom').value.trim(),b=$('frTo').value.trim();if(!a)return toast('Escreva a palavra errada');
+let n=0;caps.forEach(c=>{const r=replaceIn(c.t,a,b);c.t=r.out;n+=r.n});renderCaps();
+if($('frSave').checked&&!dict.some(p=>p[0].toLowerCase()===a.toLowerCase())){dict.push([a,b]);storeDict();renderDict()}
+$('frFrom').value='';$('frTo').value='';toast(n?`${n} troca(s) feita(s) ✅`:'Não achei essa palavra nas legendas'+($('frSave').checked?' (mas ficou lembrada)':''))};
+renderDict();
+function cutText(){return caps.filter(c=>segs.some(s=>c.e>s.s&&c.s<s.e)).map(c=>c.t).join(' ').slice(0,4000)}
+function slug(x){return x.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w]/g,'').toLowerCase()}
+function baseTags(){const cr=$('credits').value.trim(),nic=$('aiNiche').value.trim();
+const t=['#cortes',...cr.split(/\s+/).filter(w=>w.length>2).map(w=>'#'+slug(w)),...nic.split(/[,\s]+/).filter(Boolean).map(w=>'#'+slug(w)),'#humor','#fyp'];
+return [...new Set(t.filter(x=>x.length>2))].slice(0,7)}
+function renderPost(el,opts,tags){el.innerHTML='';const cr=$('credits').value.trim();
+opts.forEach((o,i)=>{const full=`${o}\n\n${cr?'🎥 Créditos: '+cr+'\n':''}${tags.join(' ')}`;const d=document.createElement('div');d.className='card';
+d.innerHTML=`<div class="row"><b>Opção ${i+1}</b><span class="sp"></span><button class="btn xs">Copiar</button></div><div class="copybox"></div>`;
+d.querySelector('.copybox').textContent=full;d.querySelector('button').onclick=()=>copy(full);el.appendChild(d)})}
+async function makePost(el){
+const title=$('title').value.trim(),txt=cutText(),tags=baseTags();
+const fallback=()=>{const h=title?title.charAt(0)+title.slice(1).toLowerCase():'Olha isso 😂';
+renderPost(el,[`${h} 😂\nComenta o que você achou 👇`,`${h}`,`Você esperava por essa? 😳👇`],tags)};
+if(!sample){fallback();return}
+el.innerHTML='<div class="hint"><span class="spin"></span>Escrevendo legendas…</div>';
+try{const r=await sample.json(`Você escreve legendas de post para TikTok de um canal brasileiro de cortes (${$('wm').value||'@pe.clipper'}).
+Título na tela: ${title||'(sem título)'}
+Contexto: ${$('aiCtx').value.trim()||'(não informado)'}
+Créditos do criador: ${$('credits').value.trim()||'(não informado)'}
+O que é falado no corte: <<${txt||'(sem legendas)'}>>
+Escreva 3 opções de legenda curta (no máximo 3 linhas cada) em português do Brasil, com emojis: 1) conta a história com humor, 2) bem curta, 3) uma pergunta que faça a pessoa comentar. Não inclua créditos nem hashtags no texto. Evite palavrões. Também sugira de 5 a 7 hashtags relevantes (incluindo os nomes do criador e do assunto).
+Responda só JSON: {"opcoes":["","",""],"hashtags":["#..."]}`,{modelTier:'quick',cache:false});
+const tg=(r.hashtags||[]).map(String).filter(h=>h.startsWith('#'));renderPost(el,(r.opcoes||[]).slice(0,3).map(String),tg.length?[...new Set(['#cortes',...tg])].slice(0,8):tags)}
+catch(e){fallback()}}
+$('postBtn').onclick=()=>makePost($('postOut'));
+$('resPost').onclick=()=>makePost($('resPostOut'));
+let pendingCut=null;
+$('planBtn').onclick=async()=>{
+const raw=$('aiTr').value.trim(),out=$('planOut');if(!raw){$('aiTr').focus();return toast('Cole a transcrição no campo acima')}
+const ent=parseTranscript(raw).filter(e=>e.text.trim());if(ent.length<3)return msg('Não reconheci tempos na transcrição. Copie do YouTube com os tempos.');
+const L=+$('aiLen').value,dur=ent[ent.length-1].t+5;
+const heur=()=>{const sc=ent.map(e=>{const x=e.text;return (x.match(/\[risadas\]/gi)||[]).length*2+(x.match(/\[grito\]/gi)||[]).length*2+(x.match(/!/g)||[]).length+(x.match(/\?/g)||[]).length*0.4+(x.match(/\[\s*_+\s*\]/g)||[]).length*0.5});
+const cands=ent.map((e,i)=>{if(!sc[i])return null;const st0=Math.max(0,e.t-3);let v=0;for(let j=0;j<ent.length;j++)if(ent[j].t>=st0&&ent[j].t<st0+L)v+=sc[j];return{s:st0,e:Math.min(dur,st0+L),v,titulo:e.text.replace(/\[[^\]]*\]/g,'').trim().split(/\s+/).slice(0,7).join(' ').toUpperCase()}}).filter(Boolean).sort((a,b)=>b.v-a.v);
+const pick=[];for(const c of cands){if(pick.length>=5)break;if(pick.every(p=>c.e<=p.s||c.s>=p.e))pick.push(c)}
+return pick.sort((a,b)=>a.s-b.s).map(p=>({inicio:p.s,fim:p.e,titulo:p.titulo,motivo:'Muitas reações nesse trecho'}))};
+let list;
+if(sample){out.innerHTML='<div class="hint"><span class="spin"></span>Lendo a transcrição…</div>';
+const lines=ent.map(e=>`${fmt(e.t).replace(/\.\d$/,'')} ${e.text}`).join('\n').slice(0,150000);
+try{const r=await sample.json(`Você é especialista em cortes virais para TikTok no Brasil. Abaixo está a transcrição de um vídeo (tempos em m:ss).
+Contexto: ${$('aiCtx').value.trim()||'(não informado)'}
+${resultsContext()}Escolha os 5 melhores momentos para corte de cerca de ${L} segundos cada: começo no gancho, fim numa frase completa, história com começo, meio e fim. Para cada um: inicio e fim em segundos, titulo para a tela (até 8 palavras, MAIÚSCULAS, pode ter 1 emoji) e motivo (1 frase).
+Transcrição:
+<<
+${lines}
+>>
+Responda só JSON: {"cortes":[{"inicio":0,"fim":0,"titulo":"","motivo":""}]}`,{modelTier:'default'});list=r.cortes}catch(e){list=null}}
+if(!list||!list.length)list=heur();
+out.innerHTML='';
+list.forEach(c=>{const s0=+c.inicio||0,e0=+c.fim||s0+L,d=document.createElement('div');d.className='item';
+d.innerHTML=`<div class="r"><b>${fmt(s0)} → ${fmt(e0)}</b><span class="hint">${Math.round(e0-s0)}s</span><span class="sp"></span><button class="btn xs">Usar</button></div><div><b>${esc(c.titulo)}</b></div><div class="hint">${esc(c.motivo)}</div>`;
+d.querySelector('button').onclick=()=>{if(loaded)useCut(s0,e0,c.titulo,true);else{pendingCut={s:s0,e:e0,t:c.titulo};toast('Abra o vídeo: o corte será montado sozinho')}};
+out.appendChild(d)});
+const all=list.map(c=>`${fmt(+c.inicio).replace(/\.\d$/,'')} → ${fmt(+c.fim).replace(/\.\d$/,'')}  ${c.titulo}`).join('\n');
+const cp=document.createElement('button');cp.className='btn xs';cp.textContent='Copiar lista';cp.onclick=()=>copy(all);out.appendChild(cp)};
+function snap(){return JSON.parse(JSON.stringify({segs,caps:caps.map(c=>({s:c.s,e:c.e,t:c.t})),zooms,bleeps,teaser,teaserOn:$('teaserOn').checked,title:$('title').value}))}
+function applySnap(p){segs=p.segs&&p.segs.length?p.segs:segs;caps=p.caps||[];zooms=p.zooms||[];bleeps=p.bleeps||[];teaser=p.teaser||{s:0,set:false};
+$('teaserOn').checked=!!p.teaserOn;$('title').value=p.title||'';sel=0;pi=-1;curList=null;refreshAll();renderBleeps();teaserUI();capSig=cutSig();if(capMaster)capInfo()}
+let queue=[];
+function renderQueue(){const box=$('queueList');box.innerHTML='';
+queue.forEach((q,i)=>{const d=document.createElement('div');d.className='item';const tot=q.segs.reduce((a,s)=>a+s.e-s.s,0);
+d.innerHTML=`<div class="r"><span class="num">${i+1}</span><b style="flex:1">${esc(q.title||'(sem título)')}</b><span class="hint">${fmt(tot)}</span><button class="btn xs" data-a="l">Abrir</button><button class="x" data-a="x">✕</button></div>`;
+d.onclick=ev=>{const a=ev.target.dataset.a;if(a==='x'){queue.splice(i,1);renderQueue()}else if(a==='l'){applySnap(q);toast('Corte '+(i+1)+' aberto no editor')}};box.appendChild(d)});
+$('queueCount').textContent=queue.length||'';$('qRun').disabled=!queue.length||!loaded}
+$('qAdd').onclick=()=>{queue.push(snap());renderQueue();$('queueList').closest('details').open=true;toast(`Corte adicionado à fila (${queue.length})`)};
+$('qRun').onclick=async()=>{if(!mime)return msg('Seu navegador não suporta exportar vídeo.');
+const back=snap(),res=[];
+for(let i=0;i<queue.length;i++){applySnap(queue[i]);await frame();$('pTitle').textContent=`Exportando corte ${i+1} de ${queue.length}…`;
+const r=await runExport();if(!r)break;
+res.push({name:`${fileName}_corte${i+1}_${slug(queue[i].title||'').slice(0,30)||'clip'}.${ext}`,blob:r.blob,total:r.total})}
+applySnap(back);$('pTitle').textContent='Exportando seu corte…';
+if(!res.length){$('overlay').classList.remove('on');return}
+$('progress').style.display='none';$('qResult').style.display='flex';const box=$('qResList');box.innerHTML='';
+res.forEach(r=>{const d=document.createElement('div');d.className='item';
+d.innerHTML=`<div class="r"><span style="flex:1;word-break:break-all">${esc(r.name)}</span><span class="hint">${(r.blob.size/1048576).toFixed(1)} MB · ${fmt(r.total)}</span></div>`;
+if(downloads){const b=document.createElement('button');b.className='btn sm pri';b.textContent='Baixar';b.onclick=async()=>{if(await saveFile(r.name,r.blob))b.textContent='Salvo ✅'};d.appendChild(b)}
+else{const a=document.createElement('a');a.className='btn sm pri';a.href=URL.createObjectURL(r.blob);a.download=r.name;a.textContent='Baixar';a.style.textDecoration='none';d.appendChild(a)}
+box.appendChild(d)})};
+$('qResClose').onclick=()=>{$('overlay').classList.remove('on');$('qResult').style.display='none'};
+const projKey=()=>curFile?`peclipper_proj_${curFile.name}_${curFile.size}`:null;
+function projData(){return{v:2,file:curFile&&curFile.name,size:curFile&&curFile.size,cut:snap(),queue,style:currentStyle(),aiCtx:$('aiCtx').value,aiTr:$('aiTr').value.slice(0,400000),saved:Date.now()}}
+function loadProj(p){if(p.style)applyStyle(p.style);if(p.cut)applySnap(p.cut);queue=p.queue||[];renderQueue();
+if(p.aiCtx!=null)$('aiCtx').value=p.aiCtx;if(p.aiTr!=null)$('aiTr').value=p.aiTr}
+let lastSaved='',resumeData=null;
+setInterval(()=>{if(!loaded||exporting||!curFile||resumeData)return;const k=projKey();let str;
+try{str=JSON.stringify(projData())}catch(e){return}
+const cmp=str.replace(/"saved":\d+/,'');if(cmp===lastSaved)return;lastSaved=cmp;
+try{localStorage.setItem(k,str);$('projInfo').textContent='💾 Salvo neste navegador às '+new Date().toLocaleTimeString('pt-BR').slice(0,5)}catch(e){$('projInfo').textContent='Não deu pra salvar no navegador (pouco espaço). Use "Baixar projeto".'}},4000);
+function checkResume(){queue=[];renderQueue();
+if(pendingCut){const p=pendingCut;pendingCut=null;useCut(p.s,p.e,p.t,true);return}
+let p=null;try{p=JSON.parse(localStorage.getItem(projKey())||'null')}catch(e){}
+if(p&&p.cut&&((p.cut.caps&&p.cut.caps.length)||(p.cut.segs&&p.cut.segs.length>1)||p.cut.title||(p.queue&&p.queue.length))){resumeData=p;$('resumeBar').style.display='flex'}}
+$('resumeYes').onclick=()=>{loadProj(resumeData);resumeData=null;$('resumeBar').style.display='none';toast('Edição restaurada 💾')};
+$('resumeNo').onclick=()=>{try{localStorage.removeItem(projKey())}catch(e){}resumeData=null;$('resumeBar').style.display='none'};
+$('projSave').onclick=()=>saveFile(`${fileName}_projeto.json`,JSON.stringify(projData()));
+$('projOpen').onclick=()=>$('projFile').click();
+$('projFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+try{const p=JSON.parse(await f.text());if(!loaded){toast('Abra o vídeo primeiro e depois o projeto');return}
+if(p.file&&curFile&&p.file!==curFile.name)toast('Atenção: o projeto é do vídeo "'+p.file+'"');loadProj(p);toast('Projeto aberto 💾')}catch(err){toast('Arquivo de projeto inválido')}};
+const isBadWord=w=>{const core=w.replace(/[.,!?;:"'()]/g,'');return !!core&&(BAD.test(core)||/\*/.test(core))};
+function snapPeak(t,d){if(!env)return t;const sm=smooth(env,2);let best=-1,bi=-1;
+for(let i=Math.max(0,Math.floor((t-0.5)/ENV_DT));i<=Math.min(sm.length-1,Math.ceil((t+0.5)/ENV_DT));i++)if(sm[i]>best){best=sm[i];bi=i}
+return bi<0?t:Math.max(0,bi*ENV_DT-d/2)}
+async function autoBleep(silent){
+try{await analyze()}catch(e){}
+const d=Math.max(0.7,num('bleepDur')),inCut=t=>segs.some(s=>t>=s.s-0.5&&t<=s.e+0.5)||(teaserItem()&&t>=teaser.s-0.5&&t<=teaser.s+num('teaserDur')+0.5);let n=0;
+caps.forEach(c=>{const words=String(c.t).trim().split(/\s+/).filter(Boolean);if(!words.some(isBadWord))return;
+const tm=capTimes(c,words);
+words.forEach((w,i)=>{if(!isBadWord(w))return;const mid=(tm[i][0]+tm[i][1])/2,t=snapPeak(mid,d);
+if(inCut(t)&&!bleeps.some(b=>Math.abs(b.t-t)<0.5)){bleeps.push({t,d,est:true});n++}})});
+renderBleeps();
+if(n){$('bleepList').closest('details').open=true;toast(`🔇 ${n} bip(s) colocado(s) sozinho(s). Ouça e ajuste se precisar`)}
+else if(!silent)toast(caps.length?'Não achei palavrões nas legendas do corte':'Primeiro gere ou importe as legendas')}
+$('bleepAuto').onclick=()=>autoBleep(false);
+let capMaster=null,capSig='',silentCaps=false;
+function cutSig(){const ti=teaserItem();return segs.map(s=>s.s.toFixed(1)+'-'+s.e.toFixed(1)).join(',')+(ti?'|'+ti.s.toFixed(1)+'-'+ti.e.toFixed(1):'')}
+function inCutCap(c){const ti=teaserItem();return segs.some(s=>c.e>s.s&&c.s<s.e)||(!!ti&&c.e>ti.s&&c.s<ti.e)}
+function capInfo(){$('capMasterInfo').textContent=capMaster?`📚 ${capMaster.length} legendas do vídeo inteiro prontas · ${caps.length} no corte atual. Elas acompanham o corte sozinhas.`:'Com a transcrição colada no ✨ Viralizar, as legendas aparecem na hora e acompanham o corte quando você muda o início ou o fim.'}
+function syncCaps(){if(!capMaster)return;caps=capMaster.filter(inCutCap);capInfo();renderCaps();renderTimeline();if($('bleepAutoOn').checked)autoBleep(true)}
+function autoCapsForCut(chosen){if(!loaded||!$('autoCapOn').checked)return;
+if(capMaster){syncCaps();return}
+if($('aiTr').value.trim()){capsFromTranscript(true);return}
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(chosen&&$('autoSrOn').checked&&SR&&!exporting)setTimeout(()=>{if(!exporting)$('srBtn').click()},700)}
+setInterval(()=>{if(!loaded||exporting||!segs.length)return;const sg=cutSig();if(sg===capSig)return;capSig=sg;
+if(capMaster)syncCaps();else if($('autoCapOn').checked&&$('aiTr').value.trim())capsFromTranscript(true)},500);
+let trTimer=null;
+$('aiTr').addEventListener('input',()=>{clearTimeout(trTimer);trTimer=setTimeout(()=>{if(loaded&&$('autoCapOn').checked&&$('aiTr').value.trim()){capMaster=null;capsFromTranscript(true)}},900)});
+function fillQuick(){const q=$('quickModel');if(!q)return;const cur=q.value;q.innerHTML='';
+q.append(new Option('Modelo: nenhum',''));
+const names=Object.keys(userPresets);if(names.length){const g=document.createElement('optgroup');g.label='Meus criadores';names.forEach(n=>g.append(new Option(n,'u:'+n)));q.append(g)}
+const g2=document.createElement('optgroup');g2.label='Prontos';Object.keys(BUILTIN).forEach(n=>g2.append(new Option(n,'b:'+n)));q.append(g2);
+if([...q.options].some(o=>o.value===cur))q.value=cur}
+const _renderPresets=renderPresets;renderPresets=function(selName){_renderPresets(selName);fillQuick()};
+fillQuick();
+$('quickModel').onchange=()=>{const v=$('quickModel').value;if(!v)return;const n=v.slice(2);
+applyStyle(v[0]==='b'?BUILTIN[n]:userPresets[n]);$('presetSel').value=v;toast('Modelo "'+n+'" aplicado')};
+const _currentStyle=currentStyle;currentStyle=function(){return Object.assign(_currentStyle(),{dict:dict.map(p=>p.slice())})};
+const _applyStyle=applyStyle;applyStyle=function(p){_applyStyle(p);
+if(p&&Array.isArray(p.dict)){let n=0;p.dict.forEach(([a,b])=>{if(a&&!dict.some(x=>x[0].toLowerCase()===String(a).toLowerCase())){dict.push([a,b]);n++}});if(n){storeDict();renderDict()}}};
+const _baseTags=baseTags;baseTags=function(){const fx=$('tagsFixed').value.split(/[\s,]+/).filter(Boolean).map(t=>t.startsWith('#')?t:'#'+slug(t));
+return [...new Set([...fx,..._baseTags()])].slice(0,9)};
+$('capReview').onclick=async()=>{
+if(!caps.length)return toast('Ainda não há legendas no corte');
+if(!sample)return msg('A revisão usa o Claude e só funciona com o editor aberto pelo Claude. Use "Corrigir palavras" para trocar à mão.');
+const b=$('capReview');b.disabled=true;b.innerHTML='<span class="spin"></span>Revisando…';
+try{
+const list=caps.slice(0,400),lines=list.map((c,i)=>`${i}|${c.t}`).join('\n');
+const r=await sample.json(`Você revisa legendas geradas por transcrição automática de um corte em português do Brasil (canal de cortes de lives, podcasts e games).
+Contexto do vídeo: ${$('aiCtx').value.trim()||'(não informado)'}
+Criador: ${$('credits').value.trim()||'(não informado)'}
+Título do corte: ${$('title').value.trim()||'(sem título)'}
+Corrija apenas erros de transcrição: palavras trocadas ou sem sentido, nomes de pessoas, marcas, jogos e carros, gírias escritas errado e acentuação. Mantenha o jeito falado e as gírias corretas, não reescreva frases, não junte nem separe legendas, não adicione palavras. Mantenha *** como está e não escreva palavrões por extenso.
+Legendas (índice|texto):
+<<
+${lines}
+>>
+Responda só JSON com as legendas que mudaram: {"correcoes":[{"i":0,"t":"texto corrigido"}]}`,{modelTier:'default'});
+let n=0;(r.correcoes||[]).forEach(f=>{const c=list[+f.i];if(c&&typeof f.t==='string'&&f.t.trim()&&f.t.trim()!==c.t){c.t=f.t.trim();n++}});
+renderCaps();toast(n?`✨ ${n} legenda(s) corrigida(s)`:'As legendas já estavam certas 👍');
+if($('bleepAutoOn').checked)autoBleep(true);
+}catch(e){toast(e&&e.code==='not_granted'?'O Claude não foi permitido nesta página':'Não consegui revisar agora. Tente de novo.')}
+b.disabled=false;b.textContent='✨ Revisar com o Claude'};
+let results=[];try{results=JSON.parse(localStorage.getItem('peclipper_results')||'[]')}catch(e){results=[]}
+function storeResults(){try{localStorage.setItem('peclipper_results',JSON.stringify(results))}catch(e){}}
+const numFmt=n=>n==null?'–':n>=1e6?(n/1e6).toFixed(1).replace('.0','')+' mi':n>=1e3?(n/1e3).toFixed(1).replace('.0','')+' mil':String(n);
+const bucket=d=>d<30?'até 30s':d<46?'30–45s':d<61?'45–60s':'mais de 60s';
+function resultStats(){const v=results.filter(r=>r.views!=null&&!r.paid);if(!v.length)return null;
+const avg=a=>a.reduce((s,r)=>s+r.views,0)/a.length,group=k=>{const m={};v.forEach(r=>{const g=k(r)||'(sem criador)';(m[g]=m[g]||[]).push(r)});return Object.entries(m).map(([g,a])=>({g,n:a.length,avg:avg(a)})).sort((a,b)=>b.avg-a.avg)};
+const sorted=v.slice().sort((a,b)=>b.views-a.views);
+return{n:v.length,avg:avg(v),creators:group(r=>r.creator),durs:group(r=>bucket(r.dur)),teaser:group(r=>r.teaser==null?null:r.teaser?'com chamada':'sem chamada').filter(x=>x.g!=='(sem criador)'),best:sorted.slice(0,3),worst:sorted.slice(-3).reverse()}}
+function renderResults(){const box=$('resList');box.innerHTML='';
+results.slice().reverse().forEach(r=>{const d=document.createElement('div');d.className='item';
+d.innerHTML=`<div class="r"><b style="flex:1">${esc(r.title||'(sem título)')}</b><button class="x" title="Apagar">✕</button></div>
+<div class="hint">${esc(r.creator||'sem criador')} · ${fmt(r.dur).replace(/\.\d$/,'')} · ${r.teaser==null?'chamada ?':r.teaser?'com chamada':'sem chamada'}${r.paid?' · <b>promovido</b>':''} · ${new Date(r.date).toLocaleDateString('pt-BR')}</div>
+<div class="g2"><label>Visualizações <input type="number" min="0" inputmode="numeric" value="${r.views??''}" data-k="views"></label><label>Curtidas <input type="number" min="0" inputmode="numeric" value="${r.likes??''}" data-k="likes"></label></div>`;
+d.querySelectorAll('input').forEach(inp=>inp.onchange=()=>{const v=inp.value.trim();r[inp.dataset.k]=v===''?null:Math.max(0,Math.round(+v));storeResults();renderResultSummary()});
+d.querySelector('.x').onclick=()=>{results.splice(results.indexOf(r),1);storeResults();renderResults()};box.appendChild(d)});
+$('resCount').textContent=results.length||'';renderResultSummary()}
+function renderResultSummary(){const s=resultStats(),el=$('resSummary');
+if(!s){el.innerHTML='<div class="hint">Registre os cortes que você postar e, depois de 1 ou 2 dias, anote as visualizações. Com 3 ou mais, o ✨ Viralizar passa a priorizar o que funciona no seu canal.</div>';return}
+const row=(t,a)=>`<div><b>${t}</b> ${a.map(x=>`${esc(x.g)}: ${numFmt(Math.round(x.avg))}${x.n>1?` (${x.n})`:''}`).join(' · ')}</div>`;
+el.innerHTML=`<div class="card"><h4>📊 Média: ${numFmt(Math.round(s.avg))} views em ${s.n} corte(s)</h4>
+${row('Por criador:',s.creators)}${row('Por duração:',s.durs)}${row('Chamada:',s.teaser)}
+<div><b>Melhor:</b> ${esc(s.best[0].title||'(sem título)')} · ${numFmt(s.best[0].views)}</div></div>`}
+$('resAdd').onclick=()=>{if(!loaded||!segs.length)return toast('Abra um vídeo e escolha o corte primeiro');
+results.push({id:Date.now(),date:Date.now(),title:$('title').value.trim(),creator:$('credits').value.trim(),dur:totalDur(),teaser:!!teaserItem(),caption:$('capStyle').value,views:null,likes:null});
+storeResults();renderResults();$('resList').closest('details').open=true;toast('Corte registrado. Volte depois para anotar as visualizações 📊')};
+function resultsContext(){const s=resultStats();if(!s||s.n<3)return'';
+const t=r=>`"${r.title||'(sem título)'}" (${r.creator||'sem criador'}, ${Math.round(r.dur)}s) – ${r.views} views`;
+return `Resultados reais do meu canal até agora (use para priorizar o tipo de momento, título e duração que funcionam aqui):
+Melhores: ${s.best.map(t).join('; ')}
+Piores: ${s.worst.map(t).join('; ')}
+Média por duração: ${s.durs.map(x=>`${x.g} ${Math.round(x.avg)} views`).join(', ')}
+Média por criador: ${s.creators.map(x=>`${x.g} ${Math.round(x.avg)} views`).join(', ')}
+`}
+renderResults();
+$('resExport').onclick=()=>saveFile('peclipper_resultados.json',JSON.stringify(results,null,1));
+$('resImport').onclick=()=>$('resFile').click();
+$('resFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+try{const arr=JSON.parse(await f.text());if(!Array.isArray(arr))throw 0;let n=0,u=0;
+arr.forEach(r=>{if(!r||typeof r!=='object')return;const key=x=>(x.title||'')+'|'+new Date(x.date).toDateString();
+const ex=results.find(x=>(r.id&&x.id===r.id)||key(x)===key(r));if(ex){Object.assign(ex,r);u++}else{results.push({views:null,likes:null,...r,id:r.id||Date.now()+n});n++}});
+storeResults();renderResults();$('resList').closest('details').open=true;toast(`📊 ${n} corte(s) importado(s)${u?`, ${u} atualizado(s)`:''}`)}catch(err){toast('Arquivo de resultados inválido')}};
+const touches=new Map();let pinch=null;
+cv.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch')return;touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
+if(touches.size===2){const [a,b]=[...touches.values()];const p=cvPoint({clientX:(a.x+b.x)/2,clientY:(a.y+b.y)/2});
+const id=st.mode==='split'?(p.y<H*num('splitR')?'topZ':'botZ'):'zoom';pinch={id,d:Math.hypot(a.x-b.x,a.y-b.y),z:num(id)};cvDrag=null}});
+cv.addEventListener('pointermove',e=>{if(!touches.has(e.pointerId))return;touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
+if(pinch&&touches.size===2){const [a,b]=[...touches.values()],el=$(pinch.id),d=Math.hypot(a.x-b.x,a.y-b.y);
+el.value=Math.max(+el.min,Math.min(+el.max,pinch.z*d/Math.max(1,pinch.d)))}});
+['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev,e=>{touches.delete(e.pointerId);if(touches.size<2)pinch=null}));
+let tOpts=[],tIdx=-1,tSig='',tBusy=false;
+function tFallback(){const txt=cutText(),cr=($('credits').value.trim().split(/\s+/).pop()||'ELE').toUpperCase(),out=[];
+const frases=txt.split(/(?<=[.!?])\s+/).map(x=>x.replace(/\*+/g,'').trim()).filter(x=>x.split(/\s+/).length>=3&&x.split(/\s+/).length<=8);
+frases.filter(f=>/[!?]/.test(f)).concat(frases).slice(0,4).forEach(f=>out.push(`"${f.replace(/[.!?]+$/,'').toUpperCase()}" 😂`));
+out.push(`${cr} NÃO ESPERAVA ISSO 😳`,'NINGUÉM ACREDITOU NISSO 😂','ESPERA ATÉ O FINAL 👀',`${cr} PERDEU A PACIÊNCIA 💀`,'ISSO FOI SEM QUERER? 🤔','A RESENHA SAIU DO CONTROLE 😂');
+return [...new Set(out)]}
+async function tFetch(){const seen=[...new Set([...tOpts,$('title').value.trim()].filter(Boolean))];
+if(!sample)return tFallback().filter(x=>!seen.includes(x));
+const r=await sample.json(`Crie ganchos para a faixa de título na tela de um corte vertical (TikTok/Reels/Shorts) de um canal brasileiro de cortes.
+Contexto: ${$('aiCtx').value.trim()||'(não informado)'}
+Criador: ${$('credits').value.trim()||'(não informado)'}
+O que é falado no corte: <<${cutText()||'(sem legendas)'}>>
+${resultsContext()}Escreva 8 opções bem diferentes entre si: pergunta que provoca comentário, exagero engraçado, frase marcante dita no vídeo entre aspas, curiosidade ("espera até o final"), polêmica leve. Cada uma com no máximo 8 palavras, em MAIÚSCULAS, no máximo 1 emoji, sem palavrões, fiel ao que acontece no vídeo.
+Não repita nenhuma destas: ${seen.join(' | ')||'(nenhuma)'}
+Responda só JSON: {"titulos":["..."]}`,{modelTier:'quick',cache:false});
+return (r.titulos||[]).map(String).map(x=>x.trim()).filter(x=>x&&!seen.includes(x))}
+function tShow(){if(tIdx>=0&&tOpts[tIdx]){$('title').value=tOpts[tIdx]}
+$('titleInfo').textContent=tOpts.length?`${tIdx+1} de ${tOpts.length}`:'';
+const box=$('titleChips');box.innerHTML='';
+tOpts.forEach((t,i)=>{const b=document.createElement('button');b.className='chip';b.style.cursor='pointer';b.style.fontWeight=i===tIdx?'800':'400';
+b.style.borderColor=i===tIdx?'#25f4ee':'';b.textContent=t;b.onclick=()=>{tIdx=i;tShow()};box.appendChild(b)})}
+$('titleNext').onclick=async()=>{if(tBusy)return;const sg=cutSig();
+if(sg!==tSig){tOpts=[];tIdx=-1;tSig=sg;const cur=$('title').value.trim();if(cur){tOpts.push(cur);tIdx=0}}
+if(tIdx<tOpts.length-1){tIdx++;tShow();return}
+tBusy=true;const b=$('titleNext');b.innerHTML='<span class="spin"></span>Buscando…';
+try{const more=await tFetch();if(!more.length){toast('Não achei opções novas. Tente de novo.')}else{tOpts.push(...more);tIdx++;tShow()}}
+catch(e){const more=tFallback().filter(x=>!tOpts.includes(x));if(more.length){tOpts.push(...more);tIdx++;tShow()}else toast('Não consegui buscar agora')}
+tBusy=false;b.textContent='🔄 Outra opção'};
+$('titlePrev').onclick=()=>{if(tIdx>0){tIdx--;tShow()}};
+let postTab='tiktok';
+$('postTab').querySelectorAll('button').forEach(b=>b.onclick=()=>{postTab=b.dataset.v;$('postTab').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+$('postBtn').textContent=postTab==='shorts'?'Gerar título e descrição do Shorts':'Gerar legenda do post';$('postOut').innerHTML=''});
+function shortsTags(){const t=baseTags().filter(x=>x!=='#fyp');return [...new Set(['#shorts',...t])].slice(0,8)}
+function renderShorts(el,items,tags){el.innerHTML='';const cr=$('credits').value.trim(),wm=$('wm').value.trim()||'@pe.clipper';
+const tip=document.createElement('div');tip.className='hint';tip.textContent='No YouTube: cole o título no campo Título e a descrição no campo Descrição. As 3 primeiras hashtags aparecem acima do título.';el.appendChild(tip);
+items.forEach((it,i)=>{let title=String(it.titulo||'').trim();if(title.length>100)title=title.slice(0,99).trim()+'…';
+const desc=`${String(it.descricao||'').trim()}\n\n${cr?'🎥 Créditos: '+cr+'\n':''}✂️ Cortes novos todo dia: inscreva-se no ${wm}\n\n${tags.join(' ')}`;
+const d=document.createElement('div');d.className='card';
+d.innerHTML=`<div class="row"><b>Opção ${i+1}</b><span class="hint">${title.length}/100</span></div>
+<div class="hint">Título</div><div class="copybox" data-k="t"></div>
+<div class="hint">Descrição</div><div class="copybox" data-k="d"></div>
+<div class="row"><button class="btn xs" data-c="t">Copiar título</button><button class="btn xs" data-c="d">Copiar descrição</button></div>`;
+d.querySelector('[data-k=t]').textContent=title;d.querySelector('[data-k=d]').textContent=desc;
+d.querySelector('[data-c=t]').onclick=()=>copy(title);d.querySelector('[data-c=d]').onclick=()=>copy(desc);el.appendChild(d)})}
+async function makeShorts(el){
+const title=$('title').value.trim(),cr=$('credits').value.trim(),tags=shortsTags();
+const h=title?title.charAt(0)+title.slice(1).toLowerCase():'Olha isso';const who=cr?` | ${cr}`:'';
+const fallback=()=>renderShorts(el,[
+{titulo:`${h}${/\p{Extended_Pictographic}/u.test(h)?'':' 😂'}${who}`,descricao:'O melhor momento da live em menos de um minuto. Comenta o que você achou 👇'},
+{titulo:`${h}${who} #shorts`,descricao:'Você esperava por essa? 😳'},
+{titulo:`Você esperava por essa? 😳${who}`,descricao:`${h}. Assiste até o final 👀`}],tags);
+if(!sample){fallback();return}
+el.innerHTML='<div class="hint"><span class="spin"></span>Escrevendo título e descrição…</div>';
+try{const r=await sample.json(`Você escreve título e descrição de YouTube Shorts para um canal brasileiro de cortes (${$('wm').value||'@pe.clipper'}).
+Título na tela do vídeo: ${title||'(sem título)'}
+Contexto: ${$('aiCtx').value.trim()||'(não informado)'}
+Criador original: ${cr||'(não informado)'}
+O que é falado no corte: <<${cutText()||'(sem legendas)'}>>
+${resultsContext()}Escreva 3 opções. Cada uma tem:
+- "titulo": até 90 caracteres, gancho forte no começo, inclua o nome do criador e o assunto (jogo, carro, programa) para ajudar na busca do YouTube, no máximo 1 emoji, sem hashtags, sem palavrões, sem clickbait enganoso.
+- "descricao": 1 a 2 frases curtas que contam o momento e puxam comentário. Não inclua créditos, link nem hashtags.
+Sugira também de 4 a 6 hashtags do assunto e do criador (sem #shorts).
+Responda só JSON: {"opcoes":[{"titulo":"","descricao":""}],"hashtags":["#..."]}`,{modelTier:'quick',cache:false});
+const tg=(r.hashtags||[]).map(String).filter(x=>x.startsWith('#')&&x.toLowerCase()!=='#shorts');
+renderShorts(el,(r.opcoes||[]).slice(0,3),tg.length?[...new Set(['#shorts',...tg,'#cortes'])].slice(0,8):tags)}
+catch(e){fallback()}}
+$('postBtn').onclick=()=>postTab==='shorts'?makeShorts($('postOut')):makePost($('postOut'));
+$('resShorts').onclick=()=>makeShorts($('resPostOut'));
+</script>
+</body>
+</html>
