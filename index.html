@@ -250,6 +250,7 @@ summary{padding:14px}
 <textarea id="title" placeholder="Ex.: ELE NÃO ESPERAVA ESSA RESPOSTA 😳"></textarea>
 <div class="row"><button class="btn sm" id="titlePrev" title="Título anterior">◀</button><button class="btn sm pri" id="titleNext">🔄 Outra opção</button><span class="hint" id="titleInfo"></span></div>
 <div class="chips" id="titleChips"></div>
+<label class="inl"><input type="checkbox" id="titleFromTeaser" checked> Título a partir da fala da chamada</label><div class="hint" id="teaserTitleInfo"></div>
 <div class="g2">
 <label>Tamanho <input type="range" id="titleSize" min="40" max="130" value="72"></label>
 <label>Posição <input type="range" id="titleY" min="0" max="1" step="0.01" value="0.12"></label>
@@ -1568,6 +1569,38 @@ else if(plan.why==='longo')toast('Vídeo com mais de 30 min: exportando no modo 
 if(!mime){msg('Seu navegador não suporta exportar vídeo. Use o Chrome ou Edge atualizado no computador.');return null}
 ext=mime.includes('mp4')?'mp4':'webm';return runExportRT()}
 fastPlan().then(p=>{if(p.ok)$('fmtHint').textContent=`Formato de saída: MP4 (H.264 + ${p.acfg.codec==='opus'?'Opus':'AAC'}), ${p.fps} quadros/s fixos, áudio sincronizado quadro a quadro. Mantenha esta aba aberta enquanto exporta.`}).catch(()=>{});
+let titleAuto=true,ttSig='';
+$('title').addEventListener('input',()=>{titleAuto=false});
+function teaserLine(){const it=teaserItem();if(!it)return'';
+const src=(capMaster||caps||[]).filter(c=>c.e>it.s&&c.s<it.e).sort((a,b)=>a.s-b.s);
+const raw=src.map(c=>String(c.t)).join(' ').replace(/\[[^\]]*\]/g,' ').split(/\s+/).filter(Boolean),w=[];
+raw.forEach(x=>{if(x.includes('*')){if(w.length&&/^(a|o|as|os|um|uma|essa|esse|da|do)$/i.test(w[w.length-1]))w.pop();return}w.push(x)});
+if(!w.length)return'';
+// escolhe a frase mais forte da chamada: com ! ou ?, e com mais conteúdo; corta em 8 palavras
+const txt=w.join(' '),fr=txt.split(/(?<=[.!?])\s+/).map(x=>x.trim()).filter(Boolean);
+const sc=x=>{const n=x.split(/\s+/).length;return Math.min(n,8)+(/[!?]/.test(x)?3:0)-(n<3?3:0)};
+let best=fr.sort((a,b)=>sc(b)-sc(a))[0]||txt;const bw=best.split(/\s+/);if(bw.length>8)best=bw.slice(-8).join(' ');
+return best.replace(/^[,;:\-–\s]+|[.,;:…\s]+$/g,'').toUpperCase()}
+const teaserTitles=l=>{if(!l)return[];const n=l.split(/\s+/).length,q=/[?!]$/.test(l);return[`"${l}" 😂`,`"${l}" 😳`,...(n<=5?[`ELE FALOU: "${l}" 💀`]:[]),`"${l}" 👀`,...(q?[]:[`"${l}?!" 🤣`])]};
+function applyTeaserTitle(force){if(!$('titleFromTeaser').checked)return;const l=teaserLine();
+$('teaserTitleInfo').textContent=l?`Fala da chamada: "${l}"`:(teaserItem()?'A chamada ainda não tem legenda: cole a transcrição no ✨ Viralizar.':'Ative a chamada para o título sair da fala dela.');
+if(!l)return;if(force||titleAuto||!$('title').value.trim()){$('title').value=teaserTitles(l)[0];titleAuto=true;tOpts=[];tIdx=-1;tSig=''}}
+setInterval(()=>{const it=teaserItem(),sg=(it?it.s.toFixed(2)+':'+it.e.toFixed(2):'-')+'|'+(capMaster||caps||[]).length+'|'+$('titleFromTeaser').checked;
+if(sg!==ttSig){ttSig=sg;applyTeaserTitle(false)}},700);
+$('titleFromTeaser').onchange=()=>applyTeaserTitle(true);
+// opções: as da chamada vêm primeiro
+const _tFallback=tFallback;tFallback=function(){return[...new Set([...teaserTitles(teaserLine()),..._tFallback()])]};
+const _tFetch=tFetch;tFetch=async function(){const l=teaserLine(),seen=[...new Set([...tOpts,$('title').value.trim()].filter(Boolean))];
+const local=teaserTitles(l).filter(x=>!seen.includes(x));if(local.length)return local;
+if(!l||!sample)return _tFetch();
+const r=await sample.json(`Crie ganchos para a faixa de título na tela de um corte vertical (TikTok/Shorts) de um canal brasileiro de cortes.
+O vídeo começa com uma chamada: um trecho curto do próprio vídeo. A fala da chamada é: <<${l}>>
+O que é falado no corte inteiro: <<${cutText()||'(sem legendas)'}>>
+Criador: ${$('credits').value.trim()||'(não informado)'}
+Escreva 6 títulos que partam da fala da chamada: a própria frase entre aspas com outra reação, uma pergunta sobre ela, ou o contexto dela ("ELE FALOU ISSO NO MEIO DA PARTIDA"). Máximo 8 palavras, MAIÚSCULAS, no máximo 1 emoji, sem palavrões, fiel ao vídeo.
+Não repita: ${seen.join(' | ')||'(nenhuma)'}
+Responda só JSON: {"titulos":["..."]}`,{modelTier:'quick',cache:false});
+return (r.titulos||[]).map(String).map(x=>x.trim()).filter(x=>x&&!seen.includes(x))};
 </script>
 </body>
 </html>
