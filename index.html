@@ -446,7 +446,7 @@ summary{padding:14px}
 <div id="overlay"><div class="modal">
 <div id="progress">
 <h3 id="pTitle">Exportando seu corte…</h3>
-<p class="hint" id="pHint">O corte é gravado em tempo real. Deixe esta aba aberta e visível até terminar.</p>
+<p class="hint" id="pHint">Deixe esta aba aberta e visível até terminar.</p>
 <div class="bar"><i id="pbar"></i></div>
 <div class="time" id="ptxt" style="margin-top:8px"></div>
 <div class="copybox" id="ptLive" style="display:none;margin-top:10px;max-height:120px;overflow:auto"></div>
@@ -817,7 +817,7 @@ if(!fatal&&!canceled)await new Promise(r=>setTimeout(r,1500));
 curList=null;pi=-1;active=false;try{recog&&recog.stop()}catch(e){}
 await new Promise(r=>setTimeout(r,600));
 exporting=false;job='export';if(spk)spk.gain.value=1;try{vGain.disconnect(srDest)}catch(e){}track.stop();
-$('ptLive').style.display='none';$('pTitle').textContent='Exportando seu corte…';$('pHint').textContent='O corte é gravado em tempo real. Deixe esta aba aberta e visível até terminar.';
+$('ptLive').style.display='none';$('pTitle').textContent='Exportando seu corte…';$('pHint').textContent='Deixe esta aba aberta e visível até terminar.';
 $('overlay').classList.remove('on');
 if(canceled&&!got.length)return;
 if(fatal&&!got.length){const why={'not-allowed':'o navegador bloqueou o reconhecimento de fala nesta página','service-not-allowed':'o serviço de reconhecimento de fala não está liberado','network':'sem conexão com o serviço de fala do Chrome','language-not-supported':'o português não está disponível no reconhecimento deste navegador','old':'seu Chrome é antigo demais para ouvir o áudio de um vídeo (atualize o Chrome)','audio-capture':'o navegador não conseguiu ouvir o áudio do vídeo'}[fatal]||'o reconhecimento de fala não iniciou';
@@ -1619,12 +1619,19 @@ const f=line.split('|').map(x=>x.replace(/^[\s#\d.)+\-–—>|•]+/,'').replace
 out.push({segs:sg,ch,title:(f.pop()||'').trim()})});
 return out}
 const readyDur=c=>c.segs.reduce((a,x)=>a+x.e-x.s,0)+(c.ch!=null&&$('teaserOn').checked?num('teaserDur'):0);
+let pendingReady=null;
+function readyMsg(t){let m=$('readyMsg');if(!m){m=document.createElement('div');m.id='readyMsg';m.className='hint';m.style.cssText='background:#3a2a00;color:#ffd666;padding:8px;border-radius:8px;margin:6px 0';$('readyOut').before(m)}m.textContent=t;m.style.display=t?'block':'none'}
+vid.addEventListener('loadedmetadata',()=>{readyMsg('');renderReady();if(!pendingReady)return;const {c,q,i}=pendingReady;pendingReady=null;
+setTimeout(async()=>{if(c.segs.some(x=>x.s>=vid.duration-0.5))return readyMsg(`⚠️ O vídeo aberto tem ${fmt(vid.duration).replace(/\.\d$/,'')}: o corte #${i+1} fica fora dele. Abra o arquivo da live inteira.`);
+await applyReady(c);if(q){await new Promise(r=>setTimeout(r,500));queue.push(snap());renderQueue()}},400)});
 function renderReady(){const box=$('readyOut');box.innerHTML='';
 ready.forEach((c,i)=>{const bad=loaded&&c.segs.some(x=>x.e>vid.duration+0.5),d=document.createElement('div');d.className='card';
 d.innerHTML=`<div class="r"><b>#${i+1} · ${c.segs.map(x=>fmt(x.s).replace(/\.\d$/,'')+'→'+fmt(x.e).replace(/\.\d$/,'')).join(' + ')}</b><span class="hint">${Math.round(c.segs.reduce((a,x)=>a+x.e-x.s,0))} s</span><span class="sp"></span><button class="btn xs pri" data-a="use">Usar</button><button class="btn xs" data-a="q">+ Fila</button></div>
 <div><b>${esc(c.title||'(título sai da chamada)')}</b></div><div class="hint">${c.ch!=null?'⚡ Chamada em '+fmt(c.ch).replace(/\.\d$/,''):'Sem chamada'}${bad?' · ⚠️ passa do fim deste vídeo: abriu a live certa?':''}</div>`;
 d.onclick=async ev=>{const b=ev.target.closest('button');if(!b)return;
-if(!loaded)return toast('Abra o vídeo da live primeiro');
+if(!loaded){pendingReady={c,q:b.dataset.a==='q',i};readyMsg('📂 Escolha o arquivo da live inteira no seu aparelho. O corte carrega sozinho assim que o vídeo abrir.');$('file').click();return}
+const out=c.segs.filter(x=>x.s>=vid.duration-0.5);
+if(out.length)return readyMsg(`⚠️ O vídeo aberto tem ${fmt(vid.duration).replace(/\.\d$/,'')} e esse corte começa em ${fmt(c.segs[0].s).replace(/\.\d$/,'')}. Abra o arquivo da live inteira (não só uma parte).`);
 await applyReady(c);if(b.dataset.a==='q'){await new Promise(r=>setTimeout(r,500));queue.push(snap());renderQueue();toast(`Corte #${i+1} na fila (${queue.length})`)}};
 box.appendChild(d)});
 $('readyQueue').disabled=!ready.length}
@@ -1635,12 +1642,13 @@ if(c.ch!=null){teaser={s:Math.max(0,Math.min(vid.duration-num('teaserDur'),c.ch-
 else if($('teaserOn').checked){teaser={s:0,set:false};await autoTeaser(true)}else teaserUI();
 if(c.title){$('title').value=c.title;titleAuto=false}else{titleAuto=true;$('title').value='';ttSig=''}
 tOpts=[];tIdx=-1;tSig='';vid.currentTime=segs[0].s;pi=-1;curList=null;refreshAll();
-if(typeof syncCaps==='function'&&capMaster)syncCaps();else autoCapsForCut(true);
+if(capMaster)syncCaps();else if($('aiTr').value.trim())autoCapsForCut(true);
+readyMsg(capMaster||$('aiTr').value.trim()?'':'💡 Para as legendas saírem na hora, cole a transcrição da live no campo "Transcrição com tempos" acima. Sem ela, use o botão de legenda automática na seção Legendas.');
 toast('Corte carregado ✂️ Confira e exporte')}
 $('readyLoad').onclick=()=>{ready=parseReady($('readyTxt').value);renderReady();
 if(!ready.length)toast('Não encontrei cortes. Cada linha precisa ter início-fim, ex.: 55:21-55:57');
-else toast(`${ready.length} cortes carregados${loaded?'':' · abra o vídeo da live para usar'}`)};
-$('readyQueue').onclick=async()=>{if(!loaded)return toast('Abra o vídeo da live primeiro');
+else{toast(`${ready.length} cortes carregados`);readyMsg(loaded?'':'📂 Agora abra o arquivo da live inteira. Ou clique em Usar: o editor pede o arquivo e já monta o corte.')}};
+$('readyQueue').onclick=async()=>{if(!loaded){readyMsg('📂 Abra primeiro o arquivo da live inteira (botão de abrir vídeo). O editor não baixa vídeos da Kick ou do YouTube.');$('file').click();return}
 for(const c of ready){await applyReady(c);await new Promise(r=>setTimeout(r,500));queue.push(snap())}
 renderQueue();$('queueList').closest('details').open=true;toast(`${ready.length} cortes na fila. Clique em "Exportar fila"`)};
 </script>
