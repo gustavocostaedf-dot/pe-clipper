@@ -180,6 +180,13 @@ summary{padding:14px}
 <div id="planOut" class="list"></div>
 </div>
 <div class="card">
+<h4>📥 Colar cortes prontos</h4>
+<div class="hint">Cole a lista de cortes que o Claude te passou, um por linha. Ex.: <b>55:21-55:57 + 57:49-58:13 | chamada 57:53 | "VALORANT É SOBRE PACIÊNCIA" 😂</b></div>
+<textarea id="readyTxt" style="min-height:70px" placeholder="1 | 55:21-55:57 + 57:49-58:13 | chamada 57:53 | &quot;VALORANT É SOBRE PACIÊNCIA&quot; 😂&#10;2 | 1:03:16-1:04:17 | chamada 1:04:14 | &quot;EU BRINQUEI COM ELE&quot; 😎"></textarea>
+<div class="row"><button class="btn sm pri" id="readyLoad">Carregar cortes</button><button class="btn sm" id="readyQueue" disabled>+ Todos na fila</button></div>
+<div id="readyOut" class="list"></div>
+</div>
+<div class="card">
 <h4>📝 Legenda do post</h4>
 <div class="seg" id="postTab"><button data-v="tiktok" class="on">TikTok</button><button data-v="shorts">YouTube Shorts</button></div>
 <label>Créditos do criador <input type="text" id="credits" placeholder="Ex.: LOUD Coringa"></label>
@@ -1601,6 +1608,41 @@ Escreva 6 títulos que partam da fala da chamada: a própria frase entre aspas c
 Não repita: ${seen.join(' | ')||'(nenhuma)'}
 Responda só JSON: {"titulos":["..."]}`,{modelTier:'quick',cache:false});
 return (r.titulos||[]).map(String).map(x=>x.trim()).filter(x=>x&&!seen.includes(x))};
+let ready=[];
+const tsec=t=>{const p=t.split(':').map(Number);return p.length===3?p[0]*3600+p[1]*60+p[2]:p[0]*60+p[1]};
+function parseReady(txt){const T='(\\d{1,2}:\\d{2}(?::\\d{2})?)',out=[];
+txt.split('\n').forEach(raw=>{let line=raw.replace(/\*\*/g,'').trim();if(!line)return;
+let ch=null;line=line.replace(new RegExp('chamada\\s*(?:em|:|=)?\\s*'+T,'i'),(m,a)=>{ch=tsec(a);return' '});
+const sg=[];line=line.replace(new RegExp(T+'\\s*(?:-|–|—|→|>|a|até)\\s*'+T,'gi'),(m,a,b)=>{const x=tsec(a),y=tsec(b);if(y>x)sg.push({s:x,e:y});return' '});
+if(!sg.length)return;
+const f=line.split('|').map(x=>x.replace(/^[\s#\d.)+\-–—>|•]+/,'').replace(/\s*\(?\d+\s*s\)?\s*$/,'').trim()).filter(x=>/\p{L}/u.test(x));
+out.push({segs:sg,ch,title:(f.pop()||'').trim()})});
+return out}
+const readyDur=c=>c.segs.reduce((a,x)=>a+x.e-x.s,0)+(c.ch!=null&&$('teaserOn').checked?num('teaserDur'):0);
+function renderReady(){const box=$('readyOut');box.innerHTML='';
+ready.forEach((c,i)=>{const bad=loaded&&c.segs.some(x=>x.e>vid.duration+0.5),d=document.createElement('div');d.className='card';
+d.innerHTML=`<div class="r"><b>#${i+1} · ${c.segs.map(x=>fmt(x.s).replace(/\.\d$/,'')+'→'+fmt(x.e).replace(/\.\d$/,'')).join(' + ')}</b><span class="hint">${Math.round(c.segs.reduce((a,x)=>a+x.e-x.s,0))} s</span><span class="sp"></span><button class="btn xs pri" data-a="use">Usar</button><button class="btn xs" data-a="q">+ Fila</button></div>
+<div><b>${esc(c.title||'(título sai da chamada)')}</b></div><div class="hint">${c.ch!=null?'⚡ Chamada em '+fmt(c.ch).replace(/\.\d$/,''):'Sem chamada'}${bad?' · ⚠️ passa do fim deste vídeo: abriu a live certa?':''}</div>`;
+d.onclick=async ev=>{const b=ev.target.closest('button');if(!b)return;
+if(!loaded)return toast('Abra o vídeo da live primeiro');
+await applyReady(c);if(b.dataset.a==='q'){await new Promise(r=>setTimeout(r,500));queue.push(snap());renderQueue();toast(`Corte #${i+1} na fila (${queue.length})`)}};
+box.appendChild(d)});
+$('readyQueue').disabled=!ready.length}
+async function applyReady(c){
+segs=c.segs.map(x=>({s:Math.max(0,x.s),e:Math.min(vid.duration,x.e)})).filter(x=>x.e>x.s+0.2);if(!segs.length)return toast('Esse corte está fora do vídeo aberto');
+sel=0;
+if(c.ch!=null){teaser={s:Math.max(0,Math.min(vid.duration-num('teaserDur'),c.ch-0.3)),set:true};$('teaserOn').checked=true;teaserUI()}
+else if($('teaserOn').checked){teaser={s:0,set:false};await autoTeaser(true)}else teaserUI();
+if(c.title){$('title').value=c.title;titleAuto=false}else{titleAuto=true;$('title').value='';ttSig=''}
+tOpts=[];tIdx=-1;tSig='';vid.currentTime=segs[0].s;pi=-1;curList=null;refreshAll();
+if(typeof syncCaps==='function'&&capMaster)syncCaps();else autoCapsForCut(true);
+toast('Corte carregado ✂️ Confira e exporte')}
+$('readyLoad').onclick=()=>{ready=parseReady($('readyTxt').value);renderReady();
+if(!ready.length)toast('Não encontrei cortes. Cada linha precisa ter início-fim, ex.: 55:21-55:57');
+else toast(`${ready.length} cortes carregados${loaded?'':' · abra o vídeo da live para usar'}`)};
+$('readyQueue').onclick=async()=>{if(!loaded)return toast('Abra o vídeo da live primeiro');
+for(const c of ready){await applyReady(c);await new Promise(r=>setTimeout(r,500));queue.push(snap())}
+renderQueue();$('queueList').closest('details').open=true;toast(`${ready.length} cortes na fila. Clique em "Exportar fila"`)};
 </script>
 </body>
 </html>
