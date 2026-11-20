@@ -1639,7 +1639,7 @@ let ch=null;line=line.replace(new RegExp('chamada\\s*(?:em|:|=)?\\s*'+T,'i'),(m,
 const sg=[];line=line.replace(new RegExp(T+'\\s*(?:-|–|—|→|>|a|até)\\s*'+T,'gi'),(m,a,b)=>{const x=tsec(a),y=tsec(b);if(y>x)sg.push({s:x,e:y});return' '});
 if(!sg.length)return;
 const f=line.split('|').map(x=>x.replace(/^[\s#\d.)+\-–—>|•]+/,'').replace(/\s*\(?\d+\s*s\)?\s*$/,'').trim()).filter(x=>/\p{L}/u.test(x));
-out.push({segs:sg,ch,title:(f.pop()||'').trim()})});
+out.push({segs:sg,ch,title:(f.pop()||'').replace(/["“”]/g,'').replace(/\s+/g,' ').trim()})});
 return out}
 const readyDur=c=>c.segs.reduce((a,x)=>a+x.e-x.s,0)+(c.ch!=null&&$('teaserOn').checked?num('teaserDur'):0);
 let pendingReady=null;
@@ -1660,7 +1660,7 @@ box.appendChild(d)});
 $('readyQueue').disabled=!ready.length}
 async function applyReady(c){
 segs=c.segs.map(x=>({s:Math.max(0,x.s),e:Math.min(vid.duration,x.e)})).filter(x=>x.e>x.s+0.2);if(!segs.length)return toast('Esse corte está fora do vídeo aberto');
-sel=0;
+sel=0;bleeps=[];renderBleeps();
 if(c.ch!=null){teaser={s:Math.max(0,Math.min(vid.duration-num('teaserDur'),c.ch-0.3)),set:true};$('teaserOn').checked=true;teaserUI()}
 else if($('teaserOn').checked){teaser={s:0,set:false};await autoTeaser(true)}else teaserUI();
 if(c.title){$('title').value=c.title;titleAuto=false}else{titleAuto=true;$('title').value='';ttSig=''}
