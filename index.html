@@ -148,6 +148,7 @@ summary{padding:14px}
 <button class="btn" id="playBtn" disabled>▶ Play</button>
 <button class="btn sm" id="inBtn" disabled>Início <span class="kbd">I</span></button>
 <button class="btn sm" id="outBtn" disabled>Fim <span class="kbd">O</span></button>
+<label class="inl" style="font-size:12px" title="Ajusta início e fim para não cortar ninguém no meio da frase"><input type="checkbox" id="snapOn" checked> Encaixar na frase</label>
 <button class="btn sm" id="addSegBtn" disabled>+ Trecho <span class="kbd">T</span></button>
 <button class="btn sm" id="zoomHereBtn" disabled>Zoom aqui <span class="kbd">Z</span></button>
 <label class="inl"><input type="checkbox" id="loop" checked> Repetir</label>
@@ -247,6 +248,15 @@ summary{padding:14px}
 <label>Zoom do jogo (baixo) <input type="range" id="botZ" min="1" max="4" step="0.05" value="1"></label>
 <button class="btn sm" id="resetSplit">Resetar enquadramento</button>
 </div>
+<div class="card" id="camCard">
+<h4>📷 Câmera do streamer</h4>
+<div class="hint" id="camInfo"></div>
+<div class="row"><button class="btn sm pri" id="camMark" disabled>Marcar câmera</button><button class="btn sm" id="camClear">Remover</button></div>
+<label class="inl"><input type="checkbox" id="camOn" checked> Mostrar a câmera ampliada (Desfocado, Preencher e Barras)</label>
+<label>Tamanho da câmera <input type="range" id="camSize" min="0.3" max="1" step="0.01" value="0.58"></label>
+<label>Posição da câmera (cima ↔ baixo) <input type="range" id="camY" min="0.08" max="0.9" step="0.01" value="0.265"></label>
+<div class="hint">Na tela dividida, a parte de cima passa a enquadrar a câmera marcada.</div>
+</div>
 <label class="inl"><input type="checkbox" id="safeOn" checked> Mostrar área coberta pelo TikTok (só no preview)</label>
 <label class="inl"><input type="checkbox" id="progOn"> Barra de progresso no vídeo (segura o público até o fim)</label>
 </div>
@@ -296,7 +306,11 @@ summary{padding:14px}
 <h4>🔤 Corrigir palavras em todas as legendas</h4>
 <div class="g2"><input type="text" id="frFrom" placeholder="Errado (ex.: Mitsubicho)"><input type="text" id="frTo" placeholder="Certo (ex.: Mitsubishi)"></div>
 <div class="row"><button class="btn sm pri" id="frBtn">Trocar em todas</button><label class="inl"><input type="checkbox" id="frSave" checked> Lembrar nos próximos vídeos</label></div>
+<label class="inl"><input type="checkbox" id="frCreator" checked> Lembrar só para este criador (campo Créditos)</label>
 <div class="hint">As correções lembradas são aplicadas sozinhas quando você importa legendas.</div>
+<details><summary>Colar lista de correções</summary>
+<textarea id="frList" style="min-height:60px" placeholder="Uma por linha. Ex.:&#10;Turzinho → Tuzinho&#10;Dima dois → Diamante 2"></textarea>
+<button class="btn sm pri" id="frListBtn">Aplicar e lembrar</button></details>
 <div class="chips" id="dictList"></div>
 </div>
 <label>Estilo
@@ -437,6 +451,8 @@ summary{padding:14px}
 <div class="seg" id="quality"><button data-v="6">Leve</button><button data-v="10" class="on">Alta</button><button data-v="16">Máxima</button></div></label>
 <label>FPS
 <div class="seg" id="fps"><button data-v="30" class="on">30</button><button data-v="60">60</button></div></label>
+<div class="hint" id="fpsHint"></div>
+<label class="inl"><input type="checkbox" id="checkOn" checked> Conferir o corte antes de exportar (tela preta, fim no meio da fala, palavras erradas, corte repetido)</label>
 <div class="hint" id="fmtHint"></div>
 <button class="btn sm" id="thumbBtn" disabled>Salvar quadro atual como capa (PNG)</button>
 </div>
@@ -458,6 +474,7 @@ summary{padding:14px}
 <div class="hint" id="outInfo"></div>
 <div class="row">
 <button class="btn pri" id="saveBtn">Baixar vídeo</button>
+<button class="btn" id="saveTxt">📄 Baixar legendas do post</button><button class="btn" id="copyTxt">Copiar legendas</button>
 <a class="btn" id="saveLink" style="display:none;text-decoration:none">Baixar vídeo</a>
 <button class="btn" id="closeRes">Fechar</button>
 </div>
@@ -870,7 +887,7 @@ let dw=vw*s,dh=vh*s,x=(W-dw)/2-px*Math.max(0,dw-W)/2,y=(H-dh)/2-py*Math.max(0,dh
 if(dh<H)y=(H-dh)/2+py*(H-dh)/2;if(dw<W)x=(W-dw)/2+px*(W-dw)/2;
 const f=zoomFactor(t);
 if(f>1){const cx=W/2,cy=y+dh*0.42;x=cx-(cx-x)*f;y=cy-(cy-y)*f;dw*=f;dh*=f}
-ctx.drawImage(vid,x,y,dw,dh);geom={dw:dw/f,dh:dh/f};
+ctx.drawImage(vid,x,y,dw,dh);geom={dw:dw/f,dh:dh/f};drawCam(k);
 }
 const title=$('title').value.trim();
 if(title){const fs=num('titleSize')*k;ctx.font=`italic 800 ${fs}px Poppins`;ctx.textAlign='center';ctx.textBaseline='middle';
@@ -1163,10 +1180,11 @@ function renderPost(el,opts,tags){el.innerHTML='';const cr=$('credits').value.tr
 opts.forEach((o,i)=>{const full=`${o}\n\n${cr?'🎥 Créditos: '+cr+'\n':''}${tags.join(' ')}`;const d=document.createElement('div');d.className='card';
 d.innerHTML=`<div class="row"><b>Opção ${i+1}</b><span class="sp"></span><button class="btn xs">Copiar</button></div><div class="copybox"></div>`;
 d.querySelector('.copybox').textContent=full;d.querySelector('button').onclick=()=>copy(full);el.appendChild(d)})}
+const sentCase=t=>t.toLowerCase().replace(/(^["“'\s]*|[.!?]\s+["“]?)(\p{L})/gu,(m,a,b)=>a+b.toUpperCase()).replace(/\b(coringa|loud|tuzinho|lupac|toguro|valorant|free fire|safari)\b/gi,w=>w.replace(/\b\p{L}/gu,c=>c.toUpperCase()));
 async function makePost(el){
 const title=$('title').value.trim(),txt=cutText(),tags=baseTags();
-const fallback=()=>{const h=title?title.charAt(0)+title.slice(1).toLowerCase():'Olha isso 😂';
-renderPost(el,[`${h} 😂\nComenta o que você achou 👇`,`${h}`,`Você esperava por essa? 😳👇`],tags)};
+const fallback=()=>{const h=title?sentCase(title):'Olha isso',em=/\p{Extended_Pictographic}/u.test(h)?'':' 😂';
+renderPost(el,[`${h}${em}\nComenta o que você achou 👇`,`${h}${em}`,`Você esperava por essa? 😳👇`],tags)};
 if(!sample){fallback();return}
 el.innerHTML='<div class="hint"><span class="spin"></span>Escrevendo legendas…</div>';
 try{const r=await sample.json(`Você escreve legendas de post para TikTok de um canal brasileiro de cortes (${$('wm').value||'@pe.clipper'}).
@@ -1412,7 +1430,7 @@ d.querySelector('[data-k=t]').textContent=title;d.querySelector('[data-k=d]').te
 d.querySelector('[data-c=t]').onclick=()=>copy(title);d.querySelector('[data-c=d]').onclick=()=>copy(desc);el.appendChild(d)})}
 async function makeShorts(el){
 const title=$('title').value.trim(),cr=$('credits').value.trim(),tags=shortsTags();
-const h=title?title.charAt(0)+title.slice(1).toLowerCase():'Olha isso';const who=cr?` | ${cr}`:'';
+const h=title?sentCase(title):'Olha isso';const who=cr?` | ${cr}`:'';
 const fallback=()=>renderShorts(el,[
 {titulo:`${h}${/\p{Extended_Pictographic}/u.test(h)?'':' 😂'}${who}`,descricao:'O melhor momento da live em menos de um minuto. Comenta o que você achou 👇'},
 {titulo:`${h}${who} #shorts`,descricao:'Você esperava por essa? 😳'},
@@ -1438,7 +1456,9 @@ const FAST_MAX_SRC=1800; // decodifica o áudio do vídeo inteiro: acima de 30 m
 async function fastPlan(){
 const r={ok:false,why:''};
 if(!window.VideoEncoder||!window.AudioEncoder||!window.VideoFrame||!window.AudioData||!vid.requestVideoFrameCallback){r.why='navegador';return r}
-if(vid.duration>FAST_MAX_SRC){r.why='longo';return r}
+if(vid.duration>FAST_MAX_SRC){try{const ix=await mp4Index(curFile);
+if(ix.audio&&!(window.AudioDecoder&&(await AudioDecoder.isConfigSupported({codec:'mp4a.40.2',sampleRate:ix.audio.sr,numberOfChannels:ix.audio.ch,...(ix.audio.asc?{description:ix.audio.asc}:{})})).supported))throw 0;
+r.longIx=ix.audio||{none:true}}catch(e){r.why='longo';return r}}
 const fps=Number(st.fps)||30,mbps={6:8,10:14,16:20}[Number(st.quality)]||14;
 const lvl=fps>30?'2A':'28';
 for(const c of['avc1.6400'+lvl,'avc1.4D00'+lvl,'avc1.42E0'+lvl]){
@@ -1449,14 +1469,17 @@ const cfg={codec:c,sampleRate:48000,numberOfChannels:2,bitrate:192000};
 try{if((await AudioEncoder.isConfigSupported(cfg)).supported){r.acfg=cfg;break}}catch(e){}}
 if(!r.vcfg||!r.acfg){r.why='codec';return r}
 r.ok=true;r.fps=fps;return r}
-async function renderAudio(list,total){
+async function renderAudio(list,total,longIx){
 const SR=48000,oc=new OfflineAudioContext(2,Math.max(1,Math.ceil(total*SR)),SR);
 const starts=[];let acc=0;list.forEach(it=>{starts.push(acc);acc+=it.e-it.s});
-let src=null;try{src=await new OfflineAudioContext(2,1,SR).decodeAudioData(await curFile.arrayBuffer())}catch(e){src=null}
+let src=null,segBufs=null;
+if(longIx){segBufs=[];for(const it of list)segBufs.push(longIx.none?null:await decodeAudioRange(curFile,longIx,it.s,it.e))}
+else try{src=await new OfflineAudioContext(2,1,SR).decodeAudioData(await curFile.arrayBuffer())}catch(e){src=null}
 const volG=oc.createGain(),bG=oc.createGain();volG.gain.value=num('vol');volG.connect(bG);bG.connect(oc.destination);
-if(src)list.forEach((it,i)=>{const O=starts[i],D=it.e-it.s,s=oc.createBufferSource(),g=oc.createGain();s.buffer=src;
+if(src||segBufs)list.forEach((it,i)=>{let O=starts[i],D=it.e-it.s,off=it.s;const s=oc.createBufferSource(),g=oc.createGain();
+if(segBufs){const sb=segBufs[i];if(!sb)return;s.buffer=sb.buf;off=it.s-sb.t0;if(off<0){O-=off;D+=off;off=0}if(D<=0.01)return}else s.buffer=src;
 g.gain.setValueAtTime(0,O);g.gain.linearRampToValueAtTime(1,O+0.004);g.gain.setValueAtTime(1,Math.max(O+0.004,O+D-0.004));g.gain.linearRampToValueAtTime(0,O+D);
-s.connect(g);g.connect(volG);s.start(O,it.s,D)});
+s.connect(g);g.connect(volG);s.start(O,off,D)});
 const beep=$('bleepType').value==='beep',tG=oc.createGain(),osc=oc.createOscillator();tG.gain.value=0;osc.frequency.value=1000;osc.connect(tG);tG.connect(oc.destination);osc.start(0);
 list.forEach((it,i)=>bleeps.forEach(b=>{const a=Math.max(b.t,it.s),z=Math.min(b.t+b.d,it.e);if(z<=a)return;
 const A=starts[i]+a-it.s,Z=starts[i]+z-it.s;bG.gain.setTargetAtTime(0,A,0.008);bG.gain.setTargetAtTime(1,Z,0.008);
@@ -1479,7 +1502,7 @@ ensureAudio();vid.pause();
 $('msgBox').style.display='none';$('qResult').style.display='none';$('progress').style.display='block';$('result').style.display='none';$('overlay').classList.add('on');
 const fps=plan.fps,total=listDur(list),N=Math.max(1,Math.round(total*fps)),prog=(f,txt)=>{$('pbar').style.width=Math.round(f*100)+'%';$('ptxt').textContent=txt};
 canceled=false;prog(0.02,'Montando o áudio…');
-const abuf=await renderAudio(list,total);if(canceled)return null;
+const abuf=await renderAudio(list,total,plan.longIx);if(canceled)return null;
 const vCh=[],aCh=[];let vDesc=null,aDesc=null,err=null;
 const ve=new VideoEncoder({output:(c,m)=>{const d=new Uint8Array(c.byteLength);c.copyTo(d);vCh.push({d,ts:c.timestamp,key:c.type==='key'});if(m&&m.decoderConfig&&m.decoderConfig.description)vDesc=u8(m.decoderConfig.description).slice()},error:e=>err=e});
 const ae=new AudioEncoder({output:(c,m)=>{const d=new Uint8Array(c.byteLength);c.copyTo(d);aCh.push({d,ts:c.timestamp,dur:c.duration});if(m&&m.decoderConfig&&m.decoderConfig.description)aDesc=u8(m.decoderConfig.description).slice()},error:e=>err=e});
@@ -1572,7 +1595,7 @@ return new Blob([ftyp,moov,mh,...all.map(s=>s.d)],{type:'video/mp4'})}
 async function runExport(){
 const plan=await fastPlan();
 if(plan.ok){try{const r=await runExportFast(plan);ext='mp4';return r}catch(e){console.warn('exportação precisa falhou',e);toast('A exportação precisa falhou neste navegador. Usando o modo antigo.')}}
-else if(plan.why==='longo')toast('Vídeo com mais de 30 min: exportando no modo antigo, que pode atrasar o áudio. Abra a live em partes menores para o modo preciso.');
+else if(plan.why==='longo')toast('Não consegui ler o áudio deste formato de vídeo (precisa ser MP4 com áudio AAC). Exportando no modo antigo, que pode atrasar o áudio.');
 if(!mime){msg('Seu navegador não suporta exportar vídeo. Use o Chrome ou Edge atualizado no computador.');return null}
 ext=mime.includes('mp4')?'mp4':'webm';return runExportRT()}
 fastPlan().then(p=>{if(p.ok)$('fmtHint').textContent=`Formato de saída: MP4 (H.264 + ${p.acfg.codec==='opus'?'Opus':'AAC'}), ${p.fps} quadros/s fixos, áudio sincronizado quadro a quadro. Mantenha esta aba aberta enquanto exporta.`}).catch(()=>{});
@@ -1651,6 +1674,175 @@ else{toast(`${ready.length} cortes carregados`);readyMsg(loaded?'':'📂 Agora a
 $('readyQueue').onclick=async()=>{if(!loaded){readyMsg('📂 Abra primeiro o arquivo da live inteira (botão de abrir vídeo). O editor não baixa vídeos da Kick ou do YouTube.');$('file').click();return}
 for(const c of ready){await applyReady(c);await new Promise(r=>setTimeout(r,500));queue.push(snap())}
 renderQueue();$('queueList').closest('details').open=true;toast(`${ready.length} cortes na fila. Clique em "Exportar fila"`)};
+const MP4IX=new WeakMap();
+function mp4Index(file){if(MP4IX.has(file))return MP4IX.get(file);const p=mp4Parse(file);MP4IX.set(file,p);return p}
+async function mp4Parse(file){
+const size=file.size,rd=async(o,n)=>new DataView(await file.slice(o,Math.min(size,o+n)).arrayBuffer()),T=(dv,p)=>String.fromCharCode(dv.getUint8(p),dv.getUint8(p+1),dv.getUint8(p+2),dv.getUint8(p+3));
+let off=0,moov=null;
+for(let guard=0;off+8<=size&&guard<10000;guard++){const h=await rd(off,16);let len=h.getUint32(0);const t=T(h,4);
+if(len===1)len=Number(h.getBigUint64(8));else if(len===0)len=size-off;
+if(t==='moov'){moov=await rd(off,len);break}if(len<8)break;off+=len}
+if(!moov)throw new Error('sem moov');
+const kids=(s,e)=>{const out=[];let p=s;while(p+8<=e){let len=moov.getUint32(p),hl=8;const t=T(moov,p+4);if(len===1){len=Number(moov.getBigUint64(p+8));hl=16}else if(len===0)len=e-p;if(len<8||p+len>e)break;out.push({t,s:p,h:p+hl,e:p+len});p+=len}return out};
+const find=(b,t)=>b&&kids(b.h,b.e).find(x=>x.t===t);
+const root={h:8,e:moov.byteLength};let mvTs=1000;const mvhd=find(root,'mvhd');if(mvhd){const v=moov.getUint8(mvhd.h);mvTs=moov.getUint32(mvhd.h+(v?20:12))}
+const res={audio:null,fps:0};
+for(const trak of kids(root.h,root.e).filter(x=>x.t==='trak')){
+const mdia=find(trak,'mdia'),hdlr=find(mdia,'hdlr');if(!hdlr)continue;const ht=T(moov,hdlr.h+8);
+const mdhd=find(mdia,'mdhd'),mv=moov.getUint8(mdhd.h),ts=moov.getUint32(mdhd.h+(mv?20:12));
+const stbl=find(find(mdia,'minf'),'stbl');if(!stbl)continue;
+const stts=find(stbl,'stts'),runs=[];{const n=moov.getUint32(stts.h+4);for(let i=0;i<n;i++)runs.push([moov.getUint32(stts.h+8+i*8),moov.getUint32(stts.h+12+i*8)])}
+if(ht==='vide'){let best=0,bd=0;runs.forEach(([c,d])=>{if(c>best&&d>0){best=c;bd=d}});if(bd)res.fps=ts/bd;continue}
+if(ht!=='soun'||res.audio)continue;
+let mediaTime=0,empty=0;const el=find(find(trak,'edts'),'elst');
+if(el){const v=moov.getUint8(el.h),n=moov.getUint32(el.h+4);let p=el.h+8;for(let i=0;i<n;i++){const d=v?Number(moov.getBigUint64(p)):moov.getUint32(p),mt=v?Number(moov.getBigInt64(p+8)):moov.getInt32(p+4);p+=v?20:12;if(mt===-1)empty+=d/mvTs;else{mediaTime=mt;break}}}
+const stsd=find(stbl,'stsd'),ent=kids(stsd.h+8,stsd.e)[0];
+if(!ent||ent.t!=='mp4a')throw new Error('áudio não é AAC ('+(ent?ent.t:'?')+')');
+const ver=moov.getUint16(ent.h+8),ch=moov.getUint16(ent.h+16),sr=moov.getUint32(ent.h+24)>>>16;
+const findDeep=(s,e)=>{for(const b of kids(s,e)){if(b.t==='esds')return b;if(b.t==='wave'){const x=findDeep(b.h,b.e);if(x)return x}}return null};
+const esds=findDeep(ent.h+28+(ver===1?16:ver===2?36:0),ent.e);let asc=null;
+if(esds){let p=esds.h+4;const rl=()=>{let n=0;for(let i=0;i<4;i++){const b=moov.getUint8(p++);n=(n<<7)|(b&0x7f);if(!(b&0x80))break}return n};
+while(p<esds.e){const tag=moov.getUint8(p++),len=rl();if(tag===3){p+=2;const fl=moov.getUint8(p++);if(fl&0x80)p+=2;if(fl&0x40)p+=moov.getUint8(p)+1;if(fl&0x20)p+=2;continue}
+if(tag===4){p+=13;continue}if(tag===5){asc=new Uint8Array(moov.buffer,moov.byteOffset+p,len).slice();break}p+=len}}
+const stsz=find(stbl,'stsz'),fixed=moov.getUint32(stsz.h+4),N=moov.getUint32(stsz.h+8);if(!N)throw new Error('MP4 fragmentado');
+const sizes=new Uint32Array(N);for(let i=0;i<N;i++)sizes[i]=fixed||moov.getUint32(stsz.h+12+i*4);
+const co=find(stbl,'stco')||find(stbl,'co64'),big=co.t==='co64',nc=moov.getUint32(co.h+4),cof=new Float64Array(nc);
+for(let i=0;i<nc;i++)cof[i]=big?Number(moov.getBigUint64(co.h+8+i*8)):moov.getUint32(co.h+8+i*4);
+const stsc=find(stbl,'stsc'),ns=moov.getUint32(stsc.h+4),sc=[];for(let i=0;i<ns;i++)sc.push([moov.getUint32(stsc.h+8+i*12),moov.getUint32(stsc.h+12+i*12)]);
+const offs=new Float64Array(N);let si=0;
+for(let c=0;c<nc&&si<N;c++){let spc=1;for(let j=sc.length-1;j>=0;j--)if(c+1>=sc[j][0]){spc=sc[j][1];break}let o=cof[c];for(let k=0;k<spc&&si<N;k++){offs[si]=o;o+=sizes[si];si++}}
+const times=new Float64Array(N);let t=0,k=0;runs.forEach(([c,d])=>{for(let j=0;j<c&&k<N;j++){times[k++]=t;t+=d}});
+res.audio={ts,sr,ch:ch||2,asc,mediaTime,empty,N,sizes,offs,times}}
+return res}
+async function decodeAudioRange(file,ix,s,e){
+const pres=i=>(ix.times[i]-ix.mediaTime)/ix.ts+ix.empty;
+let lo=0,hi=ix.N-1;const a=s-0.25;while(lo<hi){const m=(lo+hi)>>1;if(pres(m)<a)lo=m+1;else hi=m}
+const i0=Math.max(0,lo-2);let i1=i0;while(i1<ix.N-1&&pres(i1)<e+0.25)i1++;
+const outs=[];let err=null,osr=0;
+const dec=new AudioDecoder({output:d=>{osr=d.sampleRate;const n=d.numberOfFrames,arr=[];for(let c=0;c<d.numberOfChannels;c++){const f=new Float32Array(n);d.copyTo(f,{planeIndex:c,format:'f32-planar'});arr.push(f)}outs.push({t:d.timestamp/1e6,arr,n});d.close()},error:x=>err=x});
+const cfg={codec:'mp4a.40.2',sampleRate:ix.sr,numberOfChannels:ix.ch};if(ix.asc)cfg.description=ix.asc;dec.configure(cfg);
+for(let i=i0;i<=i1;){let j=i;while(j<i1&&ix.offs[j]+ix.sizes[j]===ix.offs[j+1]&&ix.offs[j+1]+ix.sizes[j+1]-ix.offs[i]<8e6)j++;
+const buf=new Uint8Array(await file.slice(ix.offs[i],ix.offs[j]+ix.sizes[j]).arrayBuffer());let p=0;
+for(let q=i;q<=j;q++){dec.decode(new EncodedAudioChunk({type:'key',timestamp:Math.round(pres(q)*1e6),data:buf.subarray(p,p+ix.sizes[q])}));p+=ix.sizes[q]}
+i=j+1;if(err)break;while(dec.decodeQueueSize>50)await new Promise(r=>setTimeout(r,2))}
+await dec.flush();dec.close();if(err)throw err;if(!outs.length)return null;
+outs.sort((x,y)=>x.t-y.t);const t0=outs[0].t,chs=Math.min(2,outs[0].arr.length),last=outs[outs.length-1],len=Math.ceil((last.t-t0)*osr)+last.n;
+const buf=new AudioBuffer({length:len,numberOfChannels:2,sampleRate:osr});
+outs.forEach(o=>{const at=Math.round((o.t-t0)*osr);for(let c=0;c<2;c++){const src=o.arr[Math.min(c,chs-1)];buf.getChannelData(c).set(src.subarray(0,Math.min(o.n,len-at)),at)}});
+return{buf,t0}}
+let srcFps=0;
+async function detectFps(){srcFps=0;$('fpsHint').textContent='';
+try{const ix=await mp4Index(curFile);if(ix.fps)srcFps=ix.fps}catch(e){}
+if(!srcFps&&vid.requestVideoFrameCallback){const ts=[];await new Promise(res=>{const was=vid.muted;vid.muted=true;const cb=(n,m)=>{ts.push(m.mediaTime);if(ts.length<12)vid.requestVideoFrameCallback(cb);else res()};vid.requestVideoFrameCallback(cb);vid.play().catch(res);setTimeout(res,1500)}).finally(()=>{});vid.pause();
+const d=ts.slice(1).map((x,i)=>x-ts[i]).filter(x=>x>0.005).sort((a,b)=>a-b);if(d.length)srcFps=1/d[0]}
+if(!srcFps)return;const want=srcFps>45?60:30;setSeg('fps','fps',want);
+$('fpsHint').textContent=`Vídeo original: ${Math.round(srcFps)} quadros/s. Exportando em ${want} para não pesar sem ganhar qualidade.`}
+vid.addEventListener('loadedmetadata',()=>{setTimeout(()=>{if(loaded)detectFps()},600)});
+let camRect=null,camFromLast=false;const camKey=()=>slug($('credits').value.trim())||'_last';
+function camStore(){try{return JSON.parse(localStorage.getItem('peclipper_cams')||'{}')}catch(e){return{}}}
+function camLoad(){const c=camStore();camFromLast=!c[camKey()]&&!!c._last&&camKey()!=='_last';camRect=c[camKey()]||c._last||null;camInfo()}
+function camInfo(){$('camInfo').textContent=!camRect?'Marque onde fica a webcam no vídeo. O editor lembra para cada criador.':camFromLast?'Usando a câmera marcada no último vídeo. Se estiver no lugar errado, marque de novo para este criador.':`Câmera marcada${$('credits').value.trim()?' para '+$('credits').value.trim():''}. Aparece ampliada no vídeo.`}
+function camSave(r){const c=camStore();c[camKey()]=r;c._last=r;try{localStorage.setItem('peclipper_cams',JSON.stringify(c))}catch(e){}camRect=r;camFromLast=false;camInfo();
+// tela dividida: a parte de cima enquadra exatamente a câmera
+const vw=vid.videoWidth,vh=vid.videoHeight,ph=Math.round(H*num('splitR')),base=Math.min(vw,vh*W/ph);
+st.split.tx=r.x+r.w/2;st.split.ty=r.y+r.h/2;$('topZ').value=Math.max(1,Math.min(8,Math.min(base/(r.w*vw),base*ph/W/(r.h*vh))))}
+function drawCam(k){if(!camRect||!$('camOn').checked||!vid.videoWidth)return;const vw=vid.videoWidth,vh=vid.videoHeight,r=camRect;
+const sw=r.w*vw,sh=r.h*vh;let bw=W*num('camSize'),bh=bw*sh/sw;if(bh>H*0.3){bh=H*0.3;bw=bh*sw/sh}
+const x=(W-bw)/2,y=Math.max(0,Math.min(H-bh,H*num('camY')-bh/2)),b=7*k;
+ctx.save();const gr=ctx.createLinearGradient(x,0,x+bw,0);gr.addColorStop(0,'#25f4ee');gr.addColorStop(1,'#fe2c55');
+ctx.shadowColor='rgba(0,0,0,.55)';ctx.shadowBlur=30*k;ctx.fillStyle=gr;rr(x-b,y-b,bw+2*b,bh+2*b,28*k);ctx.fill();ctx.shadowBlur=0;
+rr(x,y,bw,bh,22*k);ctx.clip();ctx.drawImage(vid,r.x*vw,r.y*vh,sw,sh,x,y,bw,bh);ctx.restore()}
+function camMarkUI(){if(!loaded)return toast('Abra um vídeo primeiro');vid.pause();
+const m=document.createElement('div');m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px';
+m.innerHTML=`<div style="color:#fff;font-weight:700;text-align:center">Arraste um retângulo em cima da webcam do streamer</div><canvas style="max-width:96vw;max-height:70vh;touch-action:none;cursor:crosshair;border-radius:8px"></canvas><div class="row"><button class="btn pri" data-a="ok">Salvar câmera</button><button class="btn" data-a="no">Cancelar</button></div>`;
+document.body.appendChild(m);const c=m.querySelector('canvas'),x=c.getContext('2d'),vw=vid.videoWidth,vh=vid.videoHeight;c.width=vw;c.height=vh;
+let r=camRect?{...camRect}:null,a=null;
+const paint=()=>{x.drawImage(vid,0,0,vw,vh);if(!r)return;x.fillStyle='rgba(0,0,0,.5)';x.fillRect(0,0,vw,vh);x.drawImage(vid,r.x*vw,r.y*vh,r.w*vw,r.h*vh,r.x*vw,r.y*vh,r.w*vw,r.h*vh);x.strokeStyle='#25f4ee';x.lineWidth=Math.max(3,vw/300);x.strokeRect(r.x*vw,r.y*vh,r.w*vw,r.h*vh)};
+const pos=e=>{const b=c.getBoundingClientRect();return{x:Math.max(0,Math.min(1,(e.clientX-b.left)/b.width)),y:Math.max(0,Math.min(1,(e.clientY-b.top)/b.height))}};
+c.onpointerdown=e=>{a=pos(e);c.setPointerCapture(e.pointerId)};
+c.onpointermove=e=>{if(!a)return;const p=pos(e);r={x:Math.min(a.x,p.x),y:Math.min(a.y,p.y),w:Math.abs(p.x-a.x),h:Math.abs(p.y-a.y)};paint()};
+c.onpointerup=()=>{a=null};paint();
+m.onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.a==='ok'){if(!r||r.w<0.03||r.h<0.03)return toast('Arraste um retângulo em cima da câmera');camSave(r);toast('Câmera salva 📷')}m.remove()}}
+const curCreator=()=>slug($('credits').value.trim());
+applyDict=function(t){const cc=curCreator();dict.forEach(p=>{if(!p[2]||p[2]===cc)t=replaceIn(t,p[0],p[1]).out});return t};
+renderDict=function(){const box=$('dictList');box.innerHTML='';const cc=curCreator();
+dict.forEach((p,i)=>{if(p[2]&&p[2]!==cc)return;const c=document.createElement('span');c.className='chip';c.innerHTML=`${esc(p[0])} → <b>${esc(p[1])}</b>${p[2]?' <small>('+esc(p[2])+')</small>':''} <button class="x" style="font-size:12px">✕</button>`;
+c.querySelector('button').onclick=()=>{dict.splice(i,1);storeDict();renderDict()};box.appendChild(c)})};
+function fixWord(a,b,save){let n=0;const run=arr=>(arr||[]).forEach(c=>{const r=replaceIn(c.t,a,b);c.t=r.out;n+=r.n});run(caps);if(capMaster&&capMaster!==caps)run(capMaster);
+if(save){const cc=$('frCreator').checked?curCreator():'';const i=dict.findIndex(p=>p[0].toLowerCase()===a.toLowerCase()&&(p[2]||'')===cc);if(i>=0)dict[i][1]=b;else dict.push(cc?[a,b,cc]:[a,b]);storeDict();renderDict()}
+renderCaps();return n}
+$('frBtn').onclick=()=>{const a=$('frFrom').value.trim(),b=$('frTo').value.trim();if(!a)return toast('Escreva a palavra errada');
+const n=fixWord(a,b,$('frSave').checked);$('frFrom').value='';$('frTo').value='';toast(n?`${n} troca(s) feita(s) ✅`:'Não achei essa palavra nas legendas'+($('frSave').checked?' (mas ficou lembrada)':''))};
+$('frListBtn').onclick=()=>{let n=0,k=0;$('frList').value.split('\n').forEach(l=>{const m=l.replace(/^[\s\-•*]+/,'').replace(/\*\*/g,'').match(/^"?(.+?)"?\s*(?:→|->|=>|=|:)\s*"?(.+?)"?\s*$/);if(!m)return;
+const b=m[2].replace(/\s*\(.*\)\s*$/,'').trim();m[1].split(/\s*,\s*|\s+e\s+/).map(x=>x.replace(/^"|"$/g,'').trim()).filter(Boolean).forEach(a=>{n+=fixWord(a,b,true);k++})});
+toast(k?`${k} correções salvas · ${n} troca(s) nas legendas ✅`:'Use uma correção por linha: errado → certo');if(k)$('frList').value=''};
+$('credits').addEventListener('input',()=>{renderDict();camLoad()});
+const capSrc=()=>(capMaster&&capMaster.length?capMaster:caps)||[];
+function snapEnd(e){const cs=capSrc().slice().sort((a,b)=>a.s-b.s);let i=cs.findIndex(c=>c.s<e-0.05&&c.e>e+0.12);if(i<0)return e;
+let j=i;while(j<cs.length-1&&!/[.!?…]["”]?$/.test(String(cs[j].t).trim())&&cs[j+1].s-cs[j].e<0.5&&cs[j+1].e-e<3)j++;return cs[j].e+0.1}
+function snapStart(s){const cs=capSrc().slice().sort((a,b)=>a.s-b.s);let i=cs.findIndex(c=>c.s<s-0.12&&c.e>s+0.05);if(i<0)return s;
+let j=i;while(j>0&&!/[.!?…]["”]?$/.test(String(cs[j-1].t).trim())&&cs[j].s-cs[j-1].e<0.5&&s-cs[j-1].s<3)j--;return Math.max(0,cs[j].s-0.05)}
+$('inBtn').onclick=()=>{const s=segs[sel];let t=Math.min(vid.currentTime,s.e-0.2);if($('snapOn').checked){const n=snapStart(t);if(n!==t){t=n;toast('Início encaixado no começo da frase')}}s.s=t;refreshAll()};
+$('outBtn').onclick=()=>{const s=segs[sel];let t=Math.max(vid.currentTime,s.s+0.2);if($('snapOn').checked){const n=Math.min(vid.duration,snapEnd(t));if(n!==t){t=n;toast(`Fim encaixado no fim da frase (${fmt(t)})`)}}s.e=t;refreshAll()};
+const KNOWN_BAD={lqueia:'lurka',lqueando:'lurkando',tozinho:'Tuzinho',turzinho:'Tuzinho',tuzzinho:'Tuzinho',sonoplata:'sonoplasta',casaal:'casal',filmaker:'filmmaker',meado:'miado',bluina:'buzina',prosina:'buzina',lupak:'Lupac'};
+const OK_DOUBLE=/^(leem|creem|veem|deem|voo|voos|enjoo|zoo|coordenar|cooperar|caatinga|saara|niilismo|reeleito|reenviar)$/i;
+function susWord(w){const x=w.toLowerCase().normalize('NFC').replace(/[^\p{L}]/gu,'');if(x.length<3)return null;
+if(KNOWN_BAD[x])return KNOWN_BAD[x];if(/(.)\1\1/.test(x))return'';if(/([aeiou])\1/.test(x)&&!OK_DOUBLE.test(x))return'';if(/[^aeiouáéíóúâêôãõànsr]q/.test(x)||/q(?!u)/.test(x))return'';
+if(/[bcdfgjkmpqtvxz]{3,}/.test(x.replace(/(ch|lh|nh|rr|ss)/g,'')))return'';return null}
+let exportedLog=[];try{exportedLog=JSON.parse(localStorage.getItem('peclipper_exported')||'[]')}catch(e){}
+const fileKey=()=>curFile?curFile.name+'|'+curFile.size:'';
+function recordExport(){const list=plist().filter(x=>!x.teaser).map(x=>[+x.s.toFixed(2),+x.e.toFixed(2)]);if(!list.length)return;
+exportedLog.push({f:fileKey(),segs:list,name:outName(),d:new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})});exportedLog=exportedLog.slice(-300);
+try{localStorage.setItem('peclipper_exported',JSON.stringify(exportedLog))}catch(e){}}
+async function frameLum(t){const c=document.createElement('canvas');c.width=32;c.height=18;const x=c.getContext('2d',{willReadFrequently:true});
+await new Promise(r=>{let ok=false;const f=()=>{if(!ok){ok=true;r()}};vid.addEventListener('seeked',f,{once:true});setTimeout(f,2500);vid.currentTime=t});
+x.drawImage(vid,0,0,32,18);const d=x.getImageData(0,0,32,18).data;let s=0;for(let i=0;i<d.length;i+=4)s+=0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2];return s/(d.length/4)}
+async function preCheck(){const list=plist(),out=[];if(!list.length)return out;const back=vid.currentTime;vid.pause();
+// 1. início escuro
+const f0=list[0];if(await frameLum(f0.s+0.05)<22){let fix=null;
+for(let dt=0.5;dt<=4;dt+=0.5){if(f0.s+dt>=f0.e-0.5)break;if(await frameLum(f0.s+dt)>=30){fix=dt;break}}
+out.push({txt:`⬛ O vídeo começa com a tela escura${f0.teaser?' (na chamada)':''}. Os primeiros segundos são os que seguram quem passa o feed.`,
+btn:fix?`Começar ${fix.toFixed(1)} s depois`:null,fix:()=>{if(f0.teaser){teaser.s+=fix;teaserUI()}else{segs[0].s+=fix;refreshAll()}}})}
+// 2. fim no meio da frase
+const L=list[list.length-1],ne=snapEnd(L.e);if(!L.teaser&&ne!==L.e&&ne-L.e<4){const c=capSrc().find(c=>c.s<L.e-0.05&&c.e>L.e+0.12);
+out.push({txt:`✂️ O corte termina no meio da fala${c?` ("${esc(String(c.t).trim())}")`:''}.`,btn:`Terminar em ${fmt(ne)}`,fix:()=>{const sg=segs.find(s=>Math.abs(s.e-L.e)<0.01);if(sg){sg.e=Math.min(vid.duration,ne);refreshAll()}}})}
+// 3. legendas: falta e palavras suspeitas
+const inCut=caps.filter(c=>list.some(s=>!s.teaser&&c.e>s.s&&c.s<s.e));
+if(!caps.length)out.push({txt:'💬 O corte está <b>sem legenda</b>. Muita gente assiste sem som: cole a transcrição no ✨ Viralizar ou gere a legenda automática.'});
+else{list.filter(s=>!s.teaser).forEach(s=>{const iv=caps.filter(c=>c.e>s.s&&c.s<s.e).map(c=>[Math.max(s.s,c.s),Math.min(s.e,c.e)]).sort((a,b)=>a[0]-b[0]);let cur=s.s;
+iv.concat([[s.e,s.e]]).forEach(([a,b])=>{if(a-cur>4)out.push({txt:`💬 Sem legenda de ${fmt(cur)} a ${fmt(a)}. Confira se tem fala nesse trecho.`});cur=Math.max(cur,b)})});
+const sus=new Map();inCut.forEach(c=>String(c.t).split(/\s+/).forEach(w=>{const s=susWord(w),k=w.replace(/[^\p{L}]/gu,'');if(s!==null&&k&&!sus.has(k.toLowerCase()))sus.set(k.toLowerCase(),{w:k,s})}));
+sus.forEach(({w,s})=>out.push({txt:`🔤 Palavra suspeita na legenda: <b>${esc(w)}</b>${s?` → talvez "${esc(s)}"`:''}`,btn:s?`Trocar por "${s}"`:'Corrigir…',fix:()=>{const b=s||prompt(`Corrigir "${w}" para:`,w);if(b&&b!==w){$('frCreator').checked=true;fixWord(w,b,true)}}}))}
+// 4. corte repetido
+const mine=list.filter(x=>!x.teaser),fk=fileKey(),ov=(a,b)=>Math.max(0,Math.min(a[1],b[1])-Math.max(a[0],b[0]));
+const dup=exportedLog.filter(x=>x.f===fk).reverse().find(x=>{const tot=mine.reduce((a,s)=>a+s.e-s.s,0),sh=mine.reduce((a,s)=>a+x.segs.reduce((q,g)=>q+ov([s.s,s.e],g),0),0),old=x.segs.reduce((a,g)=>a+g[1]-g[0],0);return sh>0.5*Math.min(tot,old)});
+if(dup)out.push({txt:`🔁 Você já exportou esse trecho em ${dup.d} (${esc(dup.name)}). Poste só uma versão, pra não repetir no perfil.`});
+// 5. qps
+if(srcFps&&st.fps>srcFps+5)out.push({txt:`🎞️ Exportando em ${st.fps} quadros/s um vídeo de ${Math.round(srcFps)}. Fica mais pesado sem ganhar qualidade.`,btn:`Usar ${srcFps>45?60:30}`,fix:()=>setSeg('fps','fps',srcFps>45?60:30)});
+vid.currentTime=back;return out}
+function checkModal(items){return new Promise(res=>{const m=document.createElement('div');m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+const card=document.createElement('div');card.className='card';card.style.cssText='max-width:560px;width:100%;max-height:85vh;overflow:auto;display:flex;flex-direction:column;gap:10px;background:#15151c';
+card.innerHTML=`<h3 style="margin:0">Antes de exportar, confira 👀</h3>`;
+items.forEach(it=>{const d=document.createElement('div');d.className='card';d.innerHTML=`<div>${it.txt}</div>`;
+if(it.btn){const b=document.createElement('button');b.className='btn sm';b.textContent=it.btn;b.onclick=()=>{it.fix();b.disabled=true;b.textContent='Feito ✅'};d.appendChild(b)}card.appendChild(d)});
+const row=document.createElement('div');row.className='row';row.innerHTML='<button class="btn pri" data-a="go">Exportar</button><button class="btn" data-a="back">Voltar e ajustar</button>';card.appendChild(row);
+m.appendChild(card);document.body.appendChild(m);row.onclick=e=>{const b=e.target.closest('button');if(!b)return;m.remove();res(b.dataset.a==='go')}})}
+$('exportBtn').onclick=async()=>{
+if($('checkOn').checked){const items=await preCheck();if(items.length&&!(await checkModal(items)))return}
+$('pTitle').textContent='Exportando seu corte…';
+const r=await runExport();if(!r){$('overlay').classList.remove('on');return}
+outBlob=r.blob;showResult(r.total)};
+const _runExport7=runExport;runExport=async function(){const r=await _runExport7();if(r)recordExport();return r};
+const _showResult7=showResult;showResult=function(total){_showResult7(total);
+const box=$('resPostOut');box.innerHTML='<h4 style="margin:4px 0">📝 TikTok</h4><div id="rpTik" class="list"></div><h4 style="margin:4px 0">▶️ YouTube Shorts</h4><div id="rpSho" class="list"></div>';
+Promise.all([makePost($('rpTik')),makeShorts($('rpSho'))]).catch(()=>{})};
+function postTxt(){const sec=(id,h)=>{const b=[...document.querySelectorAll('#'+id+' .card')].filter(c=>c.querySelector('.copybox')).map((c,i)=>`Opção ${i+1}:\n${[...c.querySelectorAll('.copybox')].map(x=>(x.dataset.k==='t'?'Título: ':x.dataset.k?'Descrição:\n':'')+x.textContent.trim()).join('\n\n')}`);return b.length?`=== ${h} ===\n\n${b.join('\n\n---\n\n')}\n\n`:''};
+return `${$('title').value.trim()}\n\n${sec('rpTik','TIKTOK')}${sec('rpSho','YOUTUBE SHORTS')}`.trim()}
+$('saveTxt').onclick=async()=>{const t=postTxt();if(!t)return toast('As legendas ainda estão sendo escritas');if(await saveFile(outName().replace(/\.\w+$/,'')+'_legendas.txt',new Blob([t],{type:'text/plain'})))toast('Legendas salvas 📄')};
+$('copyTxt').onclick=()=>{const t=postTxt();if(t)copy(t)};
+$('camMark').onclick=camMarkUI;$('camClear').onclick=()=>{const c=camStore();delete c[camKey()];if(camKey()==='_last'||c._last===camRect)delete c._last;try{localStorage.setItem('peclipper_cams',JSON.stringify(c))}catch(e){}camRect=null;camInfo()};
+STYLE_IDS.push('camOn','camSize','camY','checkOn','snapOn');
+vid.addEventListener('loadedmetadata',()=>{$('camMark').disabled=false;camLoad()});camLoad();renderDict();
 </script>
 </body>
 </html>
