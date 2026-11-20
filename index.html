@@ -258,7 +258,7 @@ summary{padding:14px}
 <div class="hint">Na tela dividida, a parte de cima passa a enquadrar a câmera marcada.</div>
 </div>
 <label class="inl"><input type="checkbox" id="safeOn" checked> Mostrar área coberta pelo TikTok (só no preview)</label>
-<label class="inl"><input type="checkbox" id="progOn"> Barra de progresso no vídeo (segura o público até o fim)</label>
+<label class="inl"><input type="checkbox" id="progOn" checked> Barra de progresso no vídeo (segura o público até o fim)</label>
 </div>
 </details>
 <details>
@@ -911,7 +911,7 @@ const tw2=ctx.measureText(txt).width+fs2*1.2,yy=H*(st.aspect==='9:16'?0.24:0.2),
 ctx.save();ctx.translate(W/2,yy);ctx.scale(pulse,pulse);ctx.fillStyle='#ffd60a';rr(-tw2/2,-fs2*0.8,tw2,fs2*1.6,fs2*0.8);ctx.fill();
 ctx.fillStyle='#000';ctx.fillText(txt,0,2*k);ctx.restore()}
 const fl=(vnow()-flashAt)/350;if(fl<1){ctx.fillStyle=`rgba(255,255,255,${0.6*(1-fl)})`;ctx.fillRect(0,0,W,H)}
-if($('progOn').checked&&loaded&&segs.length){const tot=totalDur()||1,fr=Math.max(0,Math.min(1,outPos()/tot)),bh=14*k;
+if(false){const tot=totalDur()||1,fr=Math.max(0,Math.min(1,outPos()/tot)),bh=14*k;
 ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(0,H-bh,W,bh);
 const gr=ctx.createLinearGradient(0,0,W,0);gr.addColorStop(0,'#25f4ee');gr.addColorStop(1,'#fe2c55');ctx.fillStyle=gr;ctx.fillRect(0,H-bh,W*fr,bh)}
 if(!exporting&&$('safeOn').checked&&st.aspect==='9:16')drawSafe();
@@ -1735,8 +1735,8 @@ async function detectFps(){srcFps=0;$('fpsHint').textContent='';
 try{const ix=await mp4Index(curFile);if(ix.fps)srcFps=ix.fps}catch(e){}
 if(!srcFps&&vid.requestVideoFrameCallback){const ts=[];await new Promise(res=>{const was=vid.muted;vid.muted=true;const cb=(n,m)=>{ts.push(m.mediaTime);if(ts.length<12)vid.requestVideoFrameCallback(cb);else res()};vid.requestVideoFrameCallback(cb);vid.play().catch(res);setTimeout(res,1500)}).finally(()=>{});vid.pause();
 const d=ts.slice(1).map((x,i)=>x-ts[i]).filter(x=>x>0.005).sort((a,b)=>a-b);if(d.length)srcFps=1/d[0]}
-if(!srcFps)return;const want=srcFps>45?60:30;setSeg('fps','fps',want);
-$('fpsHint').textContent=`Vídeo original: ${Math.round(srcFps)} quadros/s. Exportando em ${want} para não pesar sem ganhar qualidade.`}
+if(!srcFps)return;const want=30;setSeg('fps','fps',want);
+$('fpsHint').textContent=`Vídeo original: ${Math.round(srcFps)} quadros/s. Exportando em 30: fica bem mais rápido e no celular não faz diferença.`}
 vid.addEventListener('loadedmetadata',()=>{setTimeout(()=>{if(loaded)detectFps()},600)});
 let camRect=null,camFromLast=false;const camKey=()=>slug($('credits').value.trim())||'_last';
 function camStore(){try{return JSON.parse(localStorage.getItem('peclipper_cams')||'{}')}catch(e){return{}}}
@@ -1843,6 +1843,142 @@ $('copyTxt').onclick=()=>{const t=postTxt();if(t)copy(t)};
 $('camMark').onclick=camMarkUI;$('camClear').onclick=()=>{const c=camStore();delete c[camKey()];if(camKey()==='_last'||c._last===camRect)delete c._last;try{localStorage.setItem('peclipper_cams',JSON.stringify(c))}catch(e){}camRect=null;camInfo()};
 STYLE_IDS.push('camOn','camSize','camY','checkOn','snapOn');
 vid.addEventListener('loadedmetadata',()=>{$('camMark').disabled=false;camLoad()});camLoad();renderDict();
+(function(){
+const box=document.createElement('details');
+box.innerHTML=`<summary>🚀 Crescimento (seguir, comentar, compartilhar)</summary><div class="sec">
+<label class="inl"><input type="checkbox" id="endOn" checked> Cartão final "Siga" nos últimos 2 s do vídeo</label>
+<label>Frase do cartão <input type="text" id="endTxt" value="Cortes novos todo dia 🎮"></label>
+<label class="inl"><input type="checkbox" id="seriesOn" checked> Numerar a fila como série ("PARTE 1/3") e chamar a próxima parte no perfil</label>
+<label>Cortes por série <input type="number" id="seriesN" min="2" max="6" value="3"></label>
+<div class="hint">A barra de progresso fica na faixa do meio (tela dividida) ou no topo do vídeo. Antes de exportar, o editor avisa sobre corte longo, começo sem fala, chamada fraca e ponto alto no fim.</div>
+</div>`;
+const ref=$('progOn').closest('details');ref.after(box);
+})();
+STYLE_IDS.push('endOn','endTxt','seriesOn','seriesN');
+['endOn','endTxt','seriesOn','seriesN'].forEach(id=>{const e=$(id);DEFAULTS[id]=e.type==='checkbox'?e.checked:e.value});
+// jogo, criador e hashtags
+const GAMES=[[/gta[\s_-]?(6|vi)\b/,'GTA 6',['#gta6','#gtavi'],'gta6'],[/\bgta\b/,'GTA',['#gta','#gtarp'],'gta'],[/free[\s_-]?fire/,'Free Fire',['#freefire','#ff'],'freefire'],
+[/valorant/,'Valorant',['#valorant'],'valorant'],[/minecraft/,'Minecraft',['#minecraft'],'minecraft'],[/fortnite/,'Fortnite',['#fortnite'],'fortnite'],
+[/\bcs2\b|counter[\s-]?strike/,'CS2',['#cs2'],'cs2'],[/\bfifa\b|ea fc/,'EA FC',['#eafc','#fifa'],'fifa'],[/roblox/,'Roblox',['#roblox'],'roblox'],[/league of legends/,'LoL',['#leagueoflegends'],'lol']];
+function gameOf(){const t=[$('title').value,cutText(),$('aiCtx').value,$('aiNiche').value,$('tagsFixed').value,typeof fileName==='string'?fileName:''].join(' ').toLowerCase();
+for(const g of GAMES)if(g[0].test(t))return{name:g[1],tags:g[2],slug:g[3]};return null}
+const STOP=/^(o|a|os|as|do|da|dos|das|de|e|no|na|em|um|uma|que|pra|para|com|ele|ela|eu|vou|meu|minha|não|nao|mais|isso|esse|essa|muito|todo|tudo|quando|porque)$/i;
+function creatorWords(){let w=$('credits').value.trim().split(/\s+/).filter(x=>x&&!STOP.test(x));if(w.length>1&&w[0]===w[0].toUpperCase()&&w[0].length<=5)w=w.slice(1);return w}
+function creatorTag(){const w=creatorWords();return w.length?'#'+slug(w.join('')):null}
+function creatorShort(){const w=creatorWords();return w[0]||''}
+function momentTag(){const cw=creatorWords().map(x=>slug(x));let best='';
+$('title').value.replace(/[^\p{L}\p{N}\s]/gu,' ').split(/\s+/).forEach(w=>{const s=slug(w);if(s.length>=5&&!STOP.test(w)&&!cw.includes(s)&&!/^gta|^parte/.test(s)&&s.length>=best.length)best=s});
+return best?'#'+best:null}
+baseTags=function(){const fx=$('tagsFixed').value.split(/[\s,]+/).filter(Boolean).map(t=>t.startsWith('#')?t:'#'+slug(t)),g=gameOf();
+const t=[...fx,g?g.tags[0]:'#cortes','#fyp',g?'#cortes'+g.slug:'#humor',g?'#gameplaybr':'#cortesbr',creatorTag(),g&&g.tags[1]?g.tags[1]:null,momentTag()];
+return [...new Set(t.filter(x=>x&&x.length>2))].slice(0,8)};
+// série (PARTE 1/3)
+let curQIdx=-1,qRunning=false;
+const _applySnap8=applySnap;applySnap=function(p){curQIdx=queue.indexOf(p);return _applySnap8(p)};
+const _applyReady8=applyReady;applyReady=async function(c){curQIdx=-1;return _applyReady8(c)};
+vid.addEventListener('loadedmetadata',()=>{curQIdx=-1});
+function seriesInfo(){if(!$('seriesOn').checked||curQIdx<0||queue.length<2)return null;const N=Math.max(2,Math.min(6,Math.round(num('seriesN'))||3));
+const b=Math.floor(curQIdx/N),n=Math.min(N,queue.length-b*N);if(n<2)return null;return{part:curQIdx-b*N+1,n}}
+// perguntas e textos de engajamento
+function hashStr(s){let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)}
+function questionFor(){const g=gameOf(),t=$('title').value;
+const QB=['Você faria igual? 👇','Nota de 0 a 10 pra essa jogada? 👇','Quem aí já passou por isso? 😂👇','Ele mandou bem ou mal? 👇','Qual foi a melhor parte? 👇'];
+if(g)QB.push(`Você já jogou ${g.name}? Conta aí 👇`);return QB[hashStr(t)%QB.length]}
+function seriesLine(sp){return!sp?'':sp.part<sp.n?`👉 Parte ${sp.part+1} já tá no perfil`:'👉 As partes anteriores tão no perfil'}
+function enhanceOpts(opts){const sp=seriesInfo(),q=questionFor();
+return opts.map((o,i)=>{o=String(o).trim();
+if(i===1&&!/marca/i.test(o))o+='\nMarca aquele amigo que faria igual 😂👇';else if(!/\?/.test(o))o+='\n'+q;
+if(sp)o+='\n'+seriesLine(sp);return o})}
+function pinText(){const sp=seriesInfo(),g=gameOf();
+return sp&&sp.part<sp.n?`A parte ${sp.part+1} já tá no perfil 👀 Qual streamer vocês querem ver amanhã${g?' no '+g.name:''}? 👇`:`Qual streamer vocês querem ver amanhã${g?' no '+g.name:''}? 👇`}
+function replyTexts(){const sp=seriesInfo(),cs=creatorShort(),wm=$('wm').value.trim()||'@pe.clipper';
+return[sp&&sp.part<sp.n?`Parte ${sp.part+1} já tá no perfil 👀`:`Tem mais cortes${cs?' do '+cs:''} no perfil 👀`,`Amanhã tem mais${cs?' do '+cs:''}, fica ligado 🎮`,'KKKKKK ele não existe 😂','Qual parte você mais riu? 😂',`Segue o ${wm} que tem corte novo todo dia 🔥`]}
+function extrasCard(){const d=document.createElement('div');d.className='card';
+const pin=pinText(),rs=replyTexts();
+d.innerHTML=`<div class="row"><b>📌 Comentário pra fixar</b><span class="sp"></span><button class="btn xs" data-c="pin">Copiar</button></div><div class="copybox" data-k="pin"></div>
+<div style="margin-top:8px"><b>↩️ Respostas prontas</b> <span class="hint">responda na 1ª hora depois de postar</span></div><div class="rlist"></div>`;
+d.querySelector('.copybox').textContent=pin;d.querySelector('[data-c=pin]').onclick=()=>copy(pin);
+const rl=d.querySelector('.rlist');rs.forEach(r=>{const x=document.createElement('div');x.className='row';x.style.margin='4px 0';x.innerHTML='<span style="flex:1"></span><button class="btn xs">Copiar</button>';x.firstChild.textContent=r;x.lastChild.onclick=()=>copy(r);rl.appendChild(x)});
+return d}
+const _renderPost8=renderPost;renderPost=function(el,opts,tags){_renderPost8(el,enhanceOpts(opts),tags);el.appendChild(extrasCard())};
+const _renderShorts8=renderShorts;renderShorts=function(el,items,tags){const sp=seriesInfo();
+_renderShorts8(el,items.map(it=>({...it,descricao:String(it.descricao||'')+(sp?(sp.part<sp.n?` Parte ${sp.part+1} no canal 👀`:' As outras partes estão no canal 👀'):'')})),tags)};
+// linha pra planilha (aba Vídeos: Vídeo | Data | Categoria)
+function sheetLine(){const t=$('title').value.replace(/\p{Extended_Pictographic}|️/gu,'').replace(/\s+/g,' ').trim()||'(sem título)',cr=$('credits').value.trim(),sp=seriesInfo();
+return `${t}${sp?` (parte ${sp.part}/${sp.n})`:''}${cr?` (${cr})`:''}\t${new Date().toLocaleDateString('pt-BR')}\t${gameOf()?'Games e lives':'Vlogs e outros'}`}
+let tagsLog=[];try{tagsLog=JSON.parse(localStorage.getItem('peclipper_tagslog')||'[]')}catch(e){}
+function logTags(){tagsLog.push({d:new Date().toISOString().slice(0,10),title:$('title').value.trim(),tags:baseTags()});tagsLog=tagsLog.slice(-300);try{localStorage.setItem('peclipper_tagslog',JSON.stringify(tagsLog))}catch(e){}}
+// pacote de textos por corte (fila)
+let packs=[];
+function makePack(){const title=$('title').value.trim(),h=title?sentCase(title):'Olha isso',em=/\p{Extended_Pictographic}/u.test(h)?'':' 😂',cr=$('credits').value.trim(),tags=baseTags(),sp=seriesInfo();
+const [o1]=enhanceOpts([`${h}${em}`]);const tik=`${o1}\n\n${cr?'🎥 Créditos: '+cr+'\n':''}${tags.join(' ')}`;
+const sho=`${h}${em}${cr?' | '+cr:''}${sp?` (parte ${sp.part}/${sp.n})`:''}`;
+return{title,tik,sho,shoTags:shortsTags().join(' '),pin:pinText(),replies:replyTexts(),line:sheetLine()}}
+const _runExport8=runExport;runExport=async function(){const r=await _runExport8();if(r){logTags();if(qRunning)packs.push(makePack())}return r};
+// desenho: barra de progresso, selo da série e cartão final
+function drawGrowth(){if(!loaded||!segs.length)return;const k=Math.min(W,H)/1080,tot=totalDur()||1,p=Math.max(0,Math.min(tot,outPos())),fr=p/tot;
+if($('progOn').checked){const gr=ctx.createLinearGradient(0,0,W,0);gr.addColorStop(0,'#25f4ee');gr.addColorStop(1,'#fe2c55');
+if(st.mode==='split'){const yy=H*num('splitR'),bh=10*k;ctx.fillStyle='rgba(20,20,26,.92)';ctx.fillRect(W*fr,yy-bh/2,W*(1-fr),bh);ctx.fillStyle=gr;ctx.fillRect(0,yy-bh/2,W*fr,bh)}
+else{const bh=12*k;ctx.fillStyle='rgba(255,255,255,.22)';ctx.fillRect(0,0,W,bh);ctx.fillStyle=gr;ctx.fillRect(0,0,W*fr,bh)}}
+const sp=seriesInfo(),title=$('title').value.trim();
+if(sp){const fs=num('titleSize')*k;ctx.font=`italic 800 ${fs}px Poppins`;const lines=title?wrap(title,W*0.84):[],lh=fs*1.15,bh=lines.length*lh+fs*.5,cy=num('titleY')*H,top=title?Math.max(10,Math.min(H-bh-10,cy-bh/2)):cy;
+const f2=Math.max(26*k,fs*0.5),txt=`PARTE ${sp.part}/${sp.n}`;ctx.font=`900 ${f2}px Poppins`;ctx.textAlign='center';ctx.textBaseline='middle';
+const w2=ctx.measureText(txt).width+f2*1.2,h2=f2*1.5,y2=Math.max(h2/2+6*k,top-h2/2-6*k);ctx.fillStyle='#ffd60a';rr(W/2-w2/2,y2-h2/2,w2,h2,h2/2);ctx.fill();ctx.fillStyle='#000';ctx.fillText(txt,W/2,y2+2*k)}
+const ED=1.9,left=tot-p;if(!$('endOn').checked||tot<8||left>ED)return;
+const a=Math.min(1,(ED-left)/0.3),e=1-Math.pow(1-a,3),wm=$('wm').value.trim()||'@pe.clipper',l2=sp&&sp.part<sp.n?`Parte ${sp.part+1} no perfil 👀`:($('endTxt').value.trim()||'Cortes novos todo dia 🎮');
+const cy=st.mode==='split'?H*(num('splitR')+(1-num('splitR'))*0.4):H*0.6;
+ctx.save();ctx.fillStyle=`rgba(0,0,0,${0.4*e})`;ctx.fillRect(0,0,W,H);ctx.globalAlpha=e;ctx.translate(W/2,cy);const sc=0.85+0.15*e;ctx.scale(sc,sc);
+const cw=W*0.84,ch=330*k,gr=ctx.createLinearGradient(-cw/2,0,cw/2,0);gr.addColorStop(0,'#25f4ee');gr.addColorStop(1,'#fe2c55');
+ctx.fillStyle=gr;rr(-cw/2-7*k,-ch/2-7*k,cw+14*k,ch+14*k,46*k);ctx.fill();ctx.fillStyle='#111118';rr(-cw/2,-ch/2,cw,ch,40*k);ctx.fill();
+const ls=logoImg?150*k:0,gap=logoImg?28*k:0;ctx.font=`900 ${62*k}px Poppins`;const tw=Math.max(ctx.measureText('SIGA '+wm).width,0);ctx.font=`700 ${44*k}px Poppins`;const tw2=ctx.measureText(l2).width;
+const tot2=ls+gap+Math.max(tw,tw2),x0=-Math.min(tot2,cw-60*k)/2;
+if(logoImg){ctx.save();ctx.beginPath();ctx.arc(x0+ls/2,-38*k,ls/2,0,Math.PI*2);ctx.clip();ctx.drawImage(logoImg,x0,-38*k-ls/2,ls,ls);ctx.restore()}
+ctx.textAlign='left';ctx.textBaseline='middle';ctx.font=`900 ${62*k}px Poppins`;ctx.fillStyle='#fff';ctx.fillText('SIGA ',x0+ls+gap,-70*k);
+const sw=ctx.measureText('SIGA ').width;ctx.fillStyle=gr;ctx.save();ctx.translate(x0+ls+gap+sw,0);const g2=ctx.createLinearGradient(0,0,ctx.measureText(wm).width,0);g2.addColorStop(0,'#25f4ee');g2.addColorStop(1,'#fe2c55');ctx.fillStyle=g2;ctx.fillText(wm,0,-70*k);ctx.restore();
+ctx.font=`700 ${44*k}px Poppins`;ctx.fillStyle='#ffd60a';ctx.fillText(l2,x0+ls+gap,4*k);
+const bw=260*k,bh2=70*k,bx=x0+ls+gap,by=60*k,pulse=1+0.05*Math.sin(vnow()/110);ctx.save();ctx.translate(bx+bw/2,by+bh2/2);ctx.scale(pulse,pulse);ctx.fillStyle='#fe2c55';rr(-bw/2,-bh2/2,bw,bh2,bh2/2);ctx.fill();
+ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font=`800 ${36*k}px Poppins`;ctx.fillText('+ SEGUIR',0,2*k);ctx.restore();ctx.restore()}
+const _draw8=draw;draw=function(){_draw8();try{drawGrowth()}catch(e){}};
+// energia do áudio do corte (funciona até em vídeo grande)
+async function cutEnergy(items){const res=[];
+if(env){items.forEach(it=>res.push(Array.from(env.slice(Math.floor(it.s/ENV_DT),Math.ceil(it.e/ENV_DT)))));return res}
+const ix=await mp4Index(curFile);if(!ix||!ix.audio)return null;let mx=[];
+for(const it of items){const d=await decodeAudioRange(curFile,ix.audio,it.s,it.e);if(!d){res.push([]);continue}
+const a=d.buf.getChannelData(0),sr=d.buf.sampleRate,st0=Math.max(0,Math.round((it.s-d.t0)*sr)),step=Math.round(sr*0.1),n=Math.floor((it.e-it.s)/0.1),o=[];
+for(let i=0;i<n;i++){let s=0,c=0;for(let j=st0+i*step;j<st0+(i+1)*step&&j<a.length;j+=4){s+=a[j]*a[j];c++}o.push(c?Math.sqrt(s/c):0)}res.push(o);mx=mx.concat(o)}
+const p=percentile(mx,0.98)||1;return res.map(o=>o.map(v=>Math.min(1.2,v/p)))}
+async function growthChecks(){const out=[],list=plist(),main=list.filter(x=>!x.teaser),ti=list.find(x=>x.teaser),tot=listDur(main);if(!main.length)return out;
+if(tot>45)out.push({txt:`⏱️ O corte tem <b>${fmt(tot)}</b>. A média de exibição do canal é de 15 s: cortes de 30 a 45 s seguram mais gente até o fim.`,btn:'Encurtar (tirar as pausas)',fix:()=>$('silBtn').click()});
+const f=main[0],cs=capSrc();if(cs.length&&!cs.some(c=>c.e>f.s+0.2&&c.s<f.s+3)){const nx=cs.filter(c=>c.s>=f.s&&c.s<f.e-3).sort((a,b)=>a.s-b.s)[0];
+out.push({txt:'🔇 Os 3 primeiros segundos do corte (depois da chamada) não têm fala. É aí que mais gente desiste.',btn:nx?`Começar em ${fmt(nx.s)}`:null,fix:()=>{f.s=Math.max(0,nx.s-0.15);refreshAll()}})}
+let en=null;try{en=await cutEnergy(ti?main.concat([ti]):main)}catch(e){}
+if(en){const all=[].concat(...en.slice(0,main.length));if(all.length>30){const med=percentile(all,0.5),sm=smooth(Float32Array.from(all),15);let mi=0;for(let i=1;i<sm.length;i++)if(sm[i]>sm[mi])mi=i;
+const pt=mi*0.1;let srcT=null,acc=0;for(const s of main){const d=s.e-s.s;if(pt<=acc+d){srcT=s.s+(pt-acc);break}acc+=d}
+if(tot>25&&pt>0.6*tot){const d=Math.max(0,pt-0.4*tot),one=main.length===1&&d>3&&f.e-(f.s+d)>8;
+out.push({txt:`📈 O ponto alto do corte (grito, risada) fica em <b>${fmt(pt)}</b> de ${fmt(tot)}. Quem sai nos primeiros 15 s não chega lá.`,btn:one?`Começar ${fmt(d)} depois`:null,fix:()=>{f.s=snapStart(f.s+d);refreshAll()}})}
+if(ti&&en[main.length]&&en[main.length].length){const tv=percentile(en[main.length],0.7);
+if(tv<med*1.2&&srcT!=null)out.push({txt:'📣 A chamada está mais calma que o resto do corte. Ela precisa ser o momento mais animado, que dá pra entender sem contexto.',btn:'Usar o ponto alto como chamada',fix:()=>{teaser.s=Math.max(0,Math.min(vid.duration-num('teaserDur'),srcT-num('teaserDur')*0.6));teaser.set=true;teaserUI()}})}}}
+return out}
+const _preCheck8=preCheck;preCheck=async function(){const a=await _preCheck8();let b=[];try{b=await growthChecks()}catch(e){}return a.concat(b)};
+// fila: aviso de cortes longos, série e textos de cada corte
+const _qRun8=$('qRun').onclick;$('qRun').onclick=async()=>{
+if($('checkOn').checked){const long=queue.map((q,i)=>({i,d:q.segs.reduce((a,s)=>a+s.e-s.s,0)})).filter(x=>x.d>45);
+if(long.length&&!(await checkModal(long.map(x=>({txt:`⏱️ Corte ${x.i+1} tem <b>${fmt(x.d)}</b>. A média de exibição do canal é 15 s: abra o corte na fila e encurte se der.`})))))return}
+packs=[];qRunning=true;try{await _qRun8()}finally{qRunning=false}
+const rows=[...$('qResList').children];if(!packs.length||!rows.length)return;
+rows.forEach((d,i)=>{const p=packs[i];if(!p)return;const b=document.createElement('button');b.className='btn sm';b.textContent='📝 Legenda';b.onclick=()=>copy(p.tik);d.appendChild(b)});
+const old=$('qResExtra');if(old)old.remove();const ex=document.createElement('div');ex.id='qResExtra';ex.className='row';ex.style.flexWrap='wrap';
+ex.innerHTML='<button class="btn sm pri" data-a="txt">📄 Baixar todas as legendas</button><button class="btn sm" data-a="sheet">📋 Linhas pra planilha</button>';
+ex.onclick=async e=>{const a=e.target.closest('button')?.dataset.a;if(!a)return;
+if(a==='sheet')copy(packs.map(p=>p.line).join('\n'));
+else{const t=packs.map((p,i)=>`=== CORTE ${i+1}: ${p.title} ===\n\n📝 TIKTOK\n${p.tik}\n\n▶️ SHORTS (título)\n${p.sho} ${p.shoTags}\n\n📌 COMENTÁRIO PRA FIXAR\n${p.pin}\n\n↩️ RESPOSTAS\n${p.replies.map(r=>'- '+r).join('\n')}`).join('\n\n\n');
+if(await saveFile(`${fileName}_legendas_fila.txt`,new Blob([t],{type:'text/plain'})))toast('Legendas salvas 📄')}};
+$('qResList').after(ex)};
+// exportação única: linha da planilha junto das legendas
+const _showResult8=showResult;showResult=function(total){_showResult8(total);const line=sheetLine(),b=document.createElement('button');b.className='btn sm';b.textContent='📋 Linha pra planilha';b.onclick=()=>copy(line);$('resPostOut').prepend(b)};
+// arquivo sumiu durante a exportação: para em vez de travar
+vid.addEventListener('error',()=>{if(!exporting&&!$('overlay').classList.contains('on'))return;canceled=true;vid.dispatchEvent(new Event('seeked'));
+setTimeout(()=>msg('O arquivo do vídeo não pode mais ser lido: ele foi movido, renomeado ou apagado. Abra o vídeo de novo e exporte outra vez. A fila continua salva.'),300)});
 </script>
 </body>
 </html>
