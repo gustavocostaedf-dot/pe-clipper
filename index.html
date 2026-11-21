@@ -1463,6 +1463,7 @@ if(!window.VideoEncoder||!window.AudioEncoder||!window.VideoFrame||!window.Audio
 if(vid.duration>FAST_MAX_SRC){try{const ix=await mp4Index(curFile);
 if(ix.audio&&!(window.AudioDecoder&&(await AudioDecoder.isConfigSupported({codec:'mp4a.40.2',sampleRate:ix.audio.sr,numberOfChannels:ix.audio.ch,...(ix.audio.asc?{description:ix.audio.asc}:{})})).supported))throw 0;
 r.longIx=ix.audio||{none:true}}catch(e){r.why='longo';return r}}
+else if(curFile&&curFile.size>150e6){try{const ix=await mp4Index(curFile);if(ix.audio&&window.AudioDecoder&&(await AudioDecoder.isConfigSupported({codec:'mp4a.40.2',sampleRate:ix.audio.sr,numberOfChannels:ix.audio.ch,...(ix.audio.asc?{description:ix.audio.asc}:{})})).supported)r.longIx=ix.audio}catch(e){}}
 const fps=Number(st.fps)||30,mbps={6:8,10:14,16:20}[Number(st.quality)]||14;
 const lvl=fps>30?'2A':'28';
 for(const c of['avc1.6400'+lvl,'avc1.4D00'+lvl,'avc1.42E0'+lvl]){
