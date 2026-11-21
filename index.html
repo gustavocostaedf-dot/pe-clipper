@@ -908,9 +908,11 @@ if(logoImg){ctx.save();ctx.beginPath();ctx.arc(bx+ls/2,by+hh/2,ls/2,0,Math.PI*2)
 if(wm){ctx.textAlign='left';ctx.lineWidth=fs*.15;ctx.strokeStyle='rgba(0,0,0,.6)';ctx.strokeText(wm,bx+ls+gap,by+hh/2);ctx.fillStyle='#fff';ctx.fillText(wm,bx+ls+gap,by+hh/2)}
 ctx.globalAlpha=1;
 const cit=curList&&curList[pi];
-if(cit&&cit.teaser&&$('teaserLabelOn').checked&&$('teaserTxt').value.trim()){
-const txt=$('teaserTxt').value.trim(),fs2=58*k;ctx.font=`italic 800 ${fs2}px Poppins`;ctx.textAlign='center';ctx.textBaseline='middle';
-const tw2=ctx.measureText(txt).width+fs2*1.2,yy=H*(st.aspect==='9:16'?0.24:0.2),pulse=1+0.04*Math.sin(vnow()/120);
+if(cit&&cit.teaser&&$('teaserLabelOn').checked&&teaserLabelText()){
+const txt=teaserLabelText(),fs2=58*k;let yy=H*(st.aspect==='9:16'?0.24:0.2);
+if(title){const TL=titleLayout(title,k);yy=TL.top>fs2*1.9+24*k?TL.top-fs2*0.95-12*k:TL.top+TL.bh+fs2*0.95+12*k}
+ctx.font=`italic 800 ${fs2}px Poppins`;ctx.textAlign='center';ctx.textBaseline='middle';
+const tw2=ctx.measureText(txt).width+fs2*1.2,pulse=1+0.04*Math.sin(vnow()/120);
 ctx.save();ctx.translate(W/2,yy);ctx.scale(pulse,pulse);ctx.fillStyle='#ffd60a';rr(-tw2/2,-fs2*0.8,tw2,fs2*1.6,fs2*0.8);ctx.fill();
 ctx.fillStyle='#000';ctx.fillText(txt,0,2*k);ctx.restore()}
 const fl=(vnow()-flashAt)/350;if(fl<1){ctx.fillStyle=`rgba(255,255,255,${0.6*(1-fl)})`;ctx.fillRect(0,0,W,H)}
@@ -1924,8 +1926,8 @@ function drawGrowth(){if(!loaded||!segs.length)return;const k=Math.min(W,H)/1080
 if($('progOn').checked){const gr=ctx.createLinearGradient(0,0,W,0);gr.addColorStop(0,'#25f4ee');gr.addColorStop(1,'#fe2c55');
 if(st.mode==='split'){const yy=H*num('splitR'),bh=10*k;ctx.fillStyle='rgba(20,20,26,.92)';ctx.fillRect(W*fr,yy-bh/2,W*(1-fr),bh);ctx.fillStyle=gr;ctx.fillRect(0,yy-bh/2,W*fr,bh)}
 else{const bh=12*k;ctx.fillStyle='rgba(255,255,255,.22)';ctx.fillRect(0,0,W,bh);ctx.fillStyle=gr;ctx.fillRect(0,0,W*fr,bh)}}
-const sp=seriesInfo(),title=$('title').value.trim();
-if(sp){const TL=title?titleLayout(title,k):null,fs=TL?TL.fs:num('titleSize')*k,top=TL?TL.top:num('titleY')*H;
+const sp=seriesInfo(),title=$('title').value.trim(),inTeaser=!!(curList&&curList[pi]&&curList[pi].teaser);
+if(sp&&!inTeaser){const TL=title?titleLayout(title,k):null,fs=TL?TL.fs:num('titleSize')*k,top=TL?TL.top:num('titleY')*H;
 const f2=Math.max(26*k,fs*0.5),txt=`PARTE ${sp.part}/${sp.n}`;ctx.font=`900 ${f2}px Poppins`;ctx.textAlign='center';ctx.textBaseline='middle';
 const w2=ctx.measureText(txt).width+f2*1.2,h2=f2*1.5,y2=Math.max(h2/2+6*k,top-h2/2-6*k);ctx.fillStyle='#ffd60a';rr(W/2-w2/2,y2-h2/2,w2,h2,h2/2);ctx.fill();ctx.fillStyle='#000';ctx.fillText(txt,W/2,y2+2*k)}
 const ED=1.9,left=tot-p;if(!$('endOn').checked||tot<8||left>ED)return;
@@ -2031,6 +2033,28 @@ blurs.push({...r,s:Math.max(0,t-2),e:Math.min(vid.duration,t+8),all:m.querySelec
 toast(m.querySelector('[data-k=all]').checked?'Área embaçada no vídeo todo 🫥':'Área embaçada de '+fmt(Math.max(0,t-2))+' a '+fmt(Math.min(vid.duration,t+8))+'. Ajuste com "Começa aqui" e "Termina aqui".')}m.remove()}}
 $('blurAdd').onclick=blurMarkUI;
 vid.addEventListener('loadedmetadata',()=>setTimeout(blurLoad,300));if(loaded)blurLoad();
+(function(){const l=document.createElement('div');l.className='row';l.style.gap='8px';
+l.innerHTML='<label class="inl" style="flex:1"><input type="checkbox" id="teaserLabelAuto" checked> Texto automático (muda de acordo com o vídeo)</label><button class="btn xs" id="teaserLabelNext">🔄 Outro</button>';
+$('teaserTxt').before(l)})();
+STYLE_IDS.push('teaserLabelAuto');DEFAULTS.teaserLabelAuto=true;
+let tlOff=0,tlKey='',tlVal='';
+function teaserCapsText(){const ti=teaserItem();if(!ti)return'';return capSrc().filter(c=>c.e>ti.s&&c.s<ti.e).map(c=>c.t).join(' ')}
+function autoTeaserLabel(){const title=$('title').value.trim(),tx=(teaserCapsText()+' '+cutText()+' '+title).toLowerCase(),g=gameOf(),cr=creatorShort().toUpperCase();
+const C=[[/socorro|corre\b|morri|morrer|explod|caiu|bateu|polícia|estrela|tiro|cuidado|perigos|choque/,['😱 DEU TUDO ERRADO','😱 O CAOS COMEÇA AQUI','😱 ELE NÃO ESPERAVA ISSO','😱 ISSO NÃO IA DAR CERTO']],
+[/chor|emocion|saudade|respeito|segurei|homenag/,['🥹 ESSE MOMENTO EMOCIONOU','🥹 ELE NÃO SEGUROU','🥹 SEGURA A EMOÇÃO']],
+[/\bmil\b|reais|r\$|preço|caro\b|dinheiro|custa/,['💸 ESPERA ATÉ VER O PREÇO','💸 O PREÇO ASSUSTA','💸 QUANTO CUSTA ISSO?!']],
+[/\bgol\b|pênalti|juiz|arbitragem|cbf|campeonato|seleção|técnico|zagueiro/,['⚽ ELE NÃO PERDOOU','⚽ A OPINIÃO MAIS SINCERA','⚽ ELE FALOU MESMO']],
+[/kkk|psicopata|otário|velhote|risad|zoeira|ameac|criança|não sobe|longe/,['😂 ELE NÃO EXISTE','😂 ESPERA O FINAL','😂 NÃO TEM COMO NÃO RIR']]];
+let opts=null;for(const [re,o] of C)if(re.test(tx)){opts=o.slice();break}
+if(!opts)opts=g?[`🎮 O ${g.name.toUpperCase()} É INSANO`,`🎮 OLHA ISSO NO ${g.name.toUpperCase()}`,'⚡ ESPERA O FINAL']:['⚡ ESPERA O FINAL','👀 VOCÊ NÃO VAI ACREDITAR','⚡ OLHA O QUE ACONTECE'];
+if(cr&&cr.length<=12)opts.push(`⚡ OLHA O QUE O ${cr} FEZ`);
+const tu=title.toUpperCase();opts=opts.filter(o=>!tu.includes(o.replace(/^\S+\s/,'')))||opts;
+return opts[(hashStr(title+cutSig())+tlOff)%opts.length]}
+function teaserLabelText(){if(!$('teaserLabelAuto').checked)return $('teaserTxt').value.trim();
+const key=$('title').value+'|'+cutSig()+'|'+tlOff+'|'+$('credits').value+'|'+capSig;if(key!==tlKey){tlKey=key;tlVal=autoTeaserLabel()}return tlVal}
+$('teaserLabelNext').onclick=()=>{$('teaserLabelAuto').checked=true;tlOff++;$('teaserTxt').value=teaserLabelText();toast('Texto da chamada: '+$('teaserTxt').value)};
+$('teaserTxt').addEventListener('input',()=>{$('teaserLabelAuto').checked=false});
+setInterval(()=>{if($('teaserLabelAuto').checked&&document.activeElement!==$('teaserTxt')){const v=teaserLabelText();if($('teaserTxt').value!==v)$('teaserTxt').value=v}},800);
 </script>
 </body>
 </html>
