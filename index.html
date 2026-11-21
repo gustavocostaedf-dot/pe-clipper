@@ -1887,12 +1887,12 @@ const b=Math.floor(curQIdx/N),n=Math.min(N,queue.length-b*N);if(n<2)return null;
 // perguntas e textos de engajamento
 function hashStr(s){let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)}
 function questionFor(){const g=gameOf(),t=$('title').value;
-const QB=['Você faria igual? 👇','Nota de 0 a 10 pra essa jogada? 👇','Quem aí já passou por isso? 😂👇','Ele mandou bem ou mal? 👇','Qual foi a melhor parte? 👇'];
+const QB=g?['Você faria igual? 👇','Nota de 0 a 10 pra essa jogada? 👇','Quem aí já passou por isso? 😂👇','Ele mandou bem ou mal? 👇','Qual foi a melhor parte? 👇']:['Você teria coragem? 👇','Você faria igual? 👇','Quem aí já passou por isso? 😂👇','Qual foi a melhor parte? 👇','Ele mandou bem ou mal? 👇'];
 if(g)QB.push(`Você já jogou ${g.name}? Conta aí 👇`);return QB[hashStr(t)%QB.length]}
 function seriesLine(sp){return!sp?'':sp.part<sp.n?`👉 Parte ${sp.part+1} já tá no perfil`:'👉 As partes anteriores tão no perfil'}
 function enhanceOpts(opts){const sp=seriesInfo(),q=questionFor();
 return opts.map((o,i)=>{o=String(o).trim();
-if(i===1&&!/marca/i.test(o))o+='\nMarca aquele amigo que faria igual 😂👇';else if(!/\?/.test(o))o+='\n'+q;
+if(i===1&&!/marca/i.test(o))o+='\nMarca aquele amigo que faria igual 😂👇';else if(!/👇/.test(o))o+='\n'+q;
 if(sp)o+='\n'+seriesLine(sp);return o})}
 function pinText(){const sp=seriesInfo(),g=gameOf();
 return sp&&sp.part<sp.n?`A parte ${sp.part+1} já tá no perfil 👀 Qual streamer vocês querem ver amanhã${g?' no '+g.name:''}? 👇`:`Qual streamer vocês querem ver amanhã${g?' no '+g.name:''}? 👇`}
