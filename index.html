@@ -745,9 +745,13 @@ const tot=w.join(' ').length,d=c.e-c.s;let acc=c.s;
 chunks.forEach(ch=>{const txt=ch.join(' '),dd=d*(txt.length+1)/(tot+chunks.length);out.push({s:acc,e:acc+dd,t:txt});acc+=dd});n++});
 return{out,n}}
 $('splitCaps').onclick=()=>{const r=chunkCaps(caps);caps=r.out;renderCaps();renderTimeline();toast(r.n?`${r.n} legenda(s) quebrada(s) em frases curtas`:'As legendas já estão curtas')};
+function cleanCaps(list){
+let l=list.map(c=>({s:+c.s,e:+c.e,t:String(c.t).replace(/>>+/g,' ').replace(/\[[^\]]*\]/g,' ').replace(/\s+/g,' ').trim()})).filter(c=>c.t&&!/^(hum|hm|uhum|aham|hã|eh|m)\.?$/i.test(c.t)&&c.e>c.s).sort((x,y)=>x.s-y.s);
+for(let i=0;i<l.length-1;i++)if(l[i].e>l[i+1].s){if(l[i+1].s-l[i].s>=0.25)l[i].e=l[i+1].s;else{l[i+1].s=l[i].s+0.25;if(l[i+1].e<l[i+1].s+0.2)l[i+1].e=l[i+1].s+0.2;l[i].e=l[i+1].s}}
+return l}
 function setCaps(list,label){
 const inSegs=c=>segs.some(s=>c.e>s.s&&c.s<s.e);
-list=list.map(c=>({...c,t:applyDict(String(c.t))}));
+list=cleanCaps(list).map(c=>({...c,t:applyDict(String(c.t))}));
 const r=chunkCaps(list.filter(c=>c.e>c.s&&String(c.t).trim()));capMaster=r.out;capSig=cutSig();let out=r.out.filter(inCutCap);
 if(!silentCaps){if(!out.length)toast(`${label}: legendas prontas, mas nenhuma fala cai dentro do corte`);else toast(`${out.length} legendas criadas ${label} 💬`)}
 caps=out;capInfo();renderCaps();renderTimeline();$('caps').closest('details').open=true;
