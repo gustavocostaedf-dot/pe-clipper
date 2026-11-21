@@ -876,7 +876,7 @@ let offExp=false,vClock=0,vT=0;const vnow=()=>offExp?vClock:performance.now();
 function draw(){
 const k=Math.min(W,H)/1080,t=offExp?vT:vid.currentTime;
 ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
-if(loaded&&vid.videoWidth&&st.mode==='split'){
+if(loaded&&vid.videoWidth&&st.mode==='split'){vidRect=null;
 const f=zoomFactor(t);
 ['top','bot'].forEach(p=>{const g=splitGeom(p,f);ctx.drawImage(vid,g.sx,g.sy,g.cw,g.ch,g.px,g.py,g.pw,g.ph)});
 const yy=H*num('splitR'),gr=ctx.createLinearGradient(0,0,W,0);gr.addColorStop(0,'#25f4ee');gr.addColorStop(1,'#fe2c55');
@@ -889,13 +889,12 @@ ctx.drawImage(small,-W*.05,-H*.05,W*1.1,H*1.1);ctx.fillStyle='rgba(0,0,0,.35)';c
 const s=(st.mode==='cover'?Math.max(W/vw,H/vh):Math.min(W/vw,H/vh))*z;
 let dw=vw*s,dh=vh*s,x=(W-dw)/2-px*Math.max(0,dw-W)/2,y=(H-dh)/2-py*Math.max(0,dh-H)/2;
 if(dh<H)y=(H-dh)/2+py*(H-dh)/2;if(dw<W)x=(W-dw)/2+px*(W-dw)/2;
-const f=zoomFactor(t);
+vidRect={x,y,dw,dh};const f=zoomFactor(t);
 if(f>1){const cx=W/2,cy=y+dh*0.42;x=cx-(cx-x)*f;y=cy-(cy-y)*f;dw*=f;dh*=f}
 ctx.drawImage(vid,x,y,dw,dh);geom={dw:dw/f,dh:dh/f};drawCam(k);
 }
 const title=$('title').value.trim();
-if(title){const fs=num('titleSize')*k;ctx.font=`italic 800 ${fs}px Poppins`;ctx.textAlign='center';ctx.textBaseline='middle';
-const lines=wrap(title,W*0.84),lh=fs*1.15,bh=lines.length*lh+fs*.5,cy=num('titleY')*H,top=Math.max(10,Math.min(H-bh-10,cy-bh/2));
+if(title){const TL=titleLayout(title,k),fs=TL.fs,lines=TL.lines,lh=TL.lh,bh=TL.bh,top=TL.top;ctx.font=`italic 800 ${fs}px Poppins`;ctx.textAlign='center';ctx.textBaseline='middle';
 if($('titleBgOn').checked){const mw=Math.max(...lines.map(l=>ctx.measureText(l).width))+fs*.9;ctx.fillStyle=$('titleBg').value;rr(W/2-mw/2,top,mw,bh,fs*.3);ctx.fill()}
 else{ctx.lineWidth=fs*.16;ctx.strokeStyle='#000';ctx.lineJoin='round';lines.forEach((l,i)=>ctx.strokeText(l,W/2,top+fs*.25+lh*(i+.5)))}
 ctx.fillStyle=$('titleColor').value;lines.forEach((l,i)=>ctx.fillText(l,W/2,top+fs*.25+lh*(i+.5)))}
@@ -1926,7 +1925,7 @@ if($('progOn').checked){const gr=ctx.createLinearGradient(0,0,W,0);gr.addColorSt
 if(st.mode==='split'){const yy=H*num('splitR'),bh=10*k;ctx.fillStyle='rgba(20,20,26,.92)';ctx.fillRect(W*fr,yy-bh/2,W*(1-fr),bh);ctx.fillStyle=gr;ctx.fillRect(0,yy-bh/2,W*fr,bh)}
 else{const bh=12*k;ctx.fillStyle='rgba(255,255,255,.22)';ctx.fillRect(0,0,W,bh);ctx.fillStyle=gr;ctx.fillRect(0,0,W*fr,bh)}}
 const sp=seriesInfo(),title=$('title').value.trim();
-if(sp){const fs=num('titleSize')*k;ctx.font=`italic 800 ${fs}px Poppins`;const lines=title?wrap(title,W*0.84):[],lh=fs*1.15,bh=lines.length*lh+fs*.5,cy=num('titleY')*H,top=title?Math.max(10,Math.min(H-bh-10,cy-bh/2)):cy;
+if(sp){const TL=title?titleLayout(title,k):null,fs=TL?TL.fs:num('titleSize')*k,top=TL?TL.top:num('titleY')*H;
 const f2=Math.max(26*k,fs*0.5),txt=`PARTE ${sp.part}/${sp.n}`;ctx.font=`900 ${f2}px Poppins`;ctx.textAlign='center';ctx.textBaseline='middle';
 const w2=ctx.measureText(txt).width+f2*1.2,h2=f2*1.5,y2=Math.max(h2/2+6*k,top-h2/2-6*k);ctx.fillStyle='#ffd60a';rr(W/2-w2/2,y2-h2/2,w2,h2,h2/2);ctx.fill();ctx.fillStyle='#000';ctx.fillText(txt,W/2,y2+2*k)}
 const ED=1.9,left=tot-p;if(!$('endOn').checked||tot<8||left>ED)return;
@@ -1984,6 +1983,54 @@ const _showResult8=showResult;showResult=function(total){_showResult8(total);con
 // arquivo sumiu durante a exportação: para em vez de travar
 vid.addEventListener('error',()=>{if(!exporting&&!$('overlay').classList.contains('on'))return;canceled=true;vid.dispatchEvent(new Event('seeked'));
 setTimeout(()=>msg('O arquivo do vídeo não pode mais ser lido: ele foi movido, renomeado ou apagado. Abra o vídeo de novo e exporte outra vez. A fila continua salva.'),300)});
+let vidRect=null;
+(function(){const l=document.createElement('label');l.className='inl';l.innerHTML='<input type="checkbox" id="titleAbove" checked> Título sempre acima do vídeo (não cobre rostos; diminui se for longo)';$('titleBgOn').closest('label').parentElement.after(l)})();
+STYLE_IDS.push('titleAbove');DEFAULTS.titleAbove=true;
+function titleLayout(title,k){const base=num('titleSize')*k;let fs=base;ctx.font=`italic 800 ${fs}px Poppins`;let lines=wrap(title,W*0.84);
+const vr=$('titleAbove').checked&&st.mode!=='split'&&vidRect&&vidRect.y>H*0.05?vidRect:null;
+if(vr){const space=vr.y-14*k;for(let i=0;i<14;i++){ctx.font=`italic 800 ${fs}px Poppins`;lines=wrap(title,W*0.84);const bh=lines.length*fs*1.15+fs*.5;if((bh<=space-10&&lines.length<=2)||fs<=base*0.6)break;fs*=0.93}
+const lh=fs*1.15,bh=lines.length*lh+fs*.5,top=Math.max(10,Math.min(vr.y-14*k-bh,num('titleY')*H-bh/2));return{fs,lines,lh,bh,top}}
+const lh=fs*1.15,bh=lines.length*lh+fs*.5,cy=num('titleY')*H,top=Math.max(10,Math.min(H-bh-10,cy-bh/2));return{fs,lines,lh,bh,top}}
+// embaçar áreas (propagandas) por tempo
+let blurs=[],blurVer=0;
+function blurKey(){return 'peclipper_blurs'}
+function blurLoad(){try{const all=JSON.parse(localStorage.getItem(blurKey())||'{}');blurs=all[fileKey()]||[]}catch(e){blurs=[]}blurVer++;renderBlurs()}
+function blurSave(){try{const all=JSON.parse(localStorage.getItem(blurKey())||'{}');if(blurs.length)all[fileKey()]=blurs;else delete all[fileKey()];localStorage.setItem(blurKey(),JSON.stringify(all))}catch(e){}blurVer++;renderBlurs()}
+const bcan=document.createElement('canvas'),bctx=bcan.getContext('2d'),btiny=document.createElement('canvas'),btctx=btiny.getContext('2d');let bcacheKey='';
+const _ctxDI=ctx.drawImage.bind(ctx),_sctxDI=sctx.drawImage.bind(sctx);
+function blurSrc(){if(!blurs.length||!vid.videoWidth)return null;const t=offExp?vT:vid.currentTime,act=blurs.filter(b=>b.all||(t>=b.s&&t<=b.e));if(!act.length)return null;
+const key=t.toFixed(4)+'|'+blurVer;if(key===bcacheKey)return bcan;const vw=vid.videoWidth,vh=vid.videoHeight;if(bcan.width!==vw||bcan.height!==vh){bcan.width=vw;bcan.height=vh}
+bctx.drawImage(vid,0,0,vw,vh);
+act.forEach(b=>{const x=Math.round(b.x*vw),y=Math.round(b.y*vh),w=Math.max(2,Math.round(b.w*vw)),h=Math.max(2,Math.round(b.h*vh)),tw=Math.max(2,Math.round(w/24)),th=Math.max(2,Math.round(h/24));
+btiny.width=tw;btiny.height=th;btctx.drawImage(bcan,x,y,w,h,0,0,tw,th);bctx.save();bctx.beginPath();bctx.rect(x,y,w,h);bctx.clip();bctx.imageSmoothingEnabled=true;bctx.filter='blur(6px)';bctx.drawImage(btiny,0,0,tw,th,x-8,y-8,w+16,h+16);bctx.restore()});
+bcacheKey=key;return bcan}
+ctx.drawImage=function(img,...a){if(img===vid){const s=blurSrc();if(s)img=s}return _ctxDI(img,...a)};
+sctx.drawImage=function(img,...a){if(img===vid){const s=blurSrc();if(s)img=s}return _sctxDI(img,...a)};
+(function(){const card=document.createElement('div');card.className='card';card.id='blurCard';
+card.innerHTML=`<h4>🫥 Embaçar propaganda</h4><div class="hint">Marque a área onde a propaganda aparece e o tempo em que ela fica na tela. Ela sai borrada no vídeo exportado.</div>
+<div class="row"><button class="btn sm pri" id="blurAdd">+ Marcar área</button></div><div id="blurList" class="list"></div>`;
+$('camCard').after(card)})();
+function renderBlurs(){const box=$('blurList');if(!box)return;box.innerHTML='';
+blurs.forEach((b,i)=>{const d=document.createElement('div');d.className='row';d.style.cssText='flex-wrap:wrap;gap:6px;margin:6px 0';
+d.innerHTML=`<b>Área ${i+1}</b><span class="hint">${b.all?'o vídeo todo':fmt(b.s)+' → '+fmt(b.e)}</span><span class="sp"></span>
+<button class="btn xs" data-a="s">Começa aqui</button><button class="btn xs" data-a="e">Termina aqui</button><button class="btn xs" data-a="all">${b.all?'Só um trecho':'Vídeo todo'}</button><button class="btn xs" data-a="go">Ver</button><button class="btn xs" data-a="x">✕</button>`;
+d.onclick=e=>{const a=e.target.closest('button')?.dataset.a;if(!a)return;const t=vid.currentTime;
+if(a==='s'){b.s=t;if(b.e<t)b.e=Math.min(vid.duration,t+5);b.all=false}else if(a==='e'){b.e=t;if(b.s>t)b.s=Math.max(0,t-5);b.all=false}
+else if(a==='all')b.all=!b.all;else if(a==='go'){vid.currentTime=b.all?t:b.s+0.05}else if(a==='x')blurs.splice(i,1);blurSave()};
+box.appendChild(d)})}
+function blurMarkUI(){if(!loaded)return toast('Abra um vídeo primeiro');vid.pause();
+const m=document.createElement('div');m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px';
+m.innerHTML=`<div style="color:#fff;font-weight:700;text-align:center">Arraste um retângulo em cima da propaganda<br><small style="font-weight:400">Pare o vídeo num quadro em que ela aparece</small></div><canvas style="max-width:96vw;max-height:66vh;touch-action:none;cursor:crosshair;border-radius:8px"></canvas>
+<label style="color:#fff"><input type="checkbox" data-k="all"> Aparece no vídeo todo</label><div class="row"><button class="btn pri" data-a="ok">Embaçar</button><button class="btn" data-a="no">Cancelar</button></div>`;
+document.body.appendChild(m);const c=m.querySelector('canvas'),x=c.getContext('2d'),vw=vid.videoWidth,vh=vid.videoHeight;c.width=vw;c.height=vh;let r=null,a=null;
+const paint=()=>{x.drawImage(vid,0,0,vw,vh);if(!r)return;x.fillStyle='rgba(254,44,85,.35)';x.fillRect(r.x*vw,r.y*vh,r.w*vw,r.h*vh);x.strokeStyle='#fe2c55';x.lineWidth=Math.max(3,vw/300);x.strokeRect(r.x*vw,r.y*vh,r.w*vw,r.h*vh)};
+const pos=e=>{const b=c.getBoundingClientRect();return{x:Math.max(0,Math.min(1,(e.clientX-b.left)/b.width)),y:Math.max(0,Math.min(1,(e.clientY-b.top)/b.height))}};
+c.onpointerdown=e=>{a=pos(e);c.setPointerCapture(e.pointerId)};c.onpointermove=e=>{if(!a)return;const p=pos(e);r={x:Math.min(a.x,p.x),y:Math.min(a.y,p.y),w:Math.abs(p.x-a.x),h:Math.abs(p.y-a.y)};paint()};c.onpointerup=()=>{a=null};paint();
+m.onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.a==='ok'){if(!r||r.w<0.01||r.h<0.01)return toast('Arraste um retângulo em cima da propaganda');const t=vid.currentTime;
+blurs.push({...r,s:Math.max(0,t-2),e:Math.min(vid.duration,t+8),all:m.querySelector('[data-k=all]').checked});blurSave();
+toast(m.querySelector('[data-k=all]').checked?'Área embaçada no vídeo todo 🫥':'Área embaçada de '+fmt(Math.max(0,t-2))+' a '+fmt(Math.min(vid.duration,t+8))+'. Ajuste com "Começa aqui" e "Termina aqui".')}m.remove()}}
+$('blurAdd').onclick=blurMarkUI;
+vid.addEventListener('loadedmetadata',()=>setTimeout(blurLoad,300));if(loaded)blurLoad();
 </script>
 </body>
 </html>
