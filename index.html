@@ -2057,6 +2057,32 @@ $('teaserLabelNext').onclick=()=>{$('teaserLabelAuto').checked=true;tlOff++;$('t
 $('teaserTxt').addEventListener('input',()=>{$('teaserLabelAuto').checked=false});
 setInterval(()=>{if($('teaserLabelAuto').checked&&document.activeElement!==$('teaserTxt')){const v=teaserLabelText();if($('teaserTxt').value!==v)$('teaserTxt').value=v}},800);
 $('camUseLast').onclick=()=>{const c=camStore();if(c._last){camSave(c._last);toast('Usando a câmera do último vídeo 📷')}};
+let storyMode=false,storyName='';
+(function(){const b=document.createElement('button');b.className='btn';b.id='storyBtn';b.disabled=true;b.textContent='📲 Chamada pro story';b.title='Exporta ~8 s do momento mais forte, com "Vídeo completo no perfil"';$('exportBtn').before(b)})();
+vid.addEventListener('loadedmetadata',()=>{$('storyBtn').disabled=false});if(loaded)$('storyBtn').disabled=false;
+function storyQuestion(){const t=$('title').value.replace(/\p{Extended_Pictographic}|️/gu,'').trim();return /\?\s*$/.test(t)?t.charAt(0)+t.slice(1).toLowerCase():questionFor().replace(' 👇','')}
+function drawStoryBanner(){if(!storyMode)return;const k=Math.min(W,H)/1080,txt='Vídeo completo no perfil 👆',fs=50*k;ctx.save();ctx.font=`900 ${fs}px Poppins`;ctx.textAlign='center';ctx.textBaseline='middle';
+const w=ctx.measureText(txt).width+fs*1.4,h=fs*1.8,y=H*0.8,pulse=1+0.04*Math.sin(vnow()/130);ctx.translate(W/2,y);ctx.scale(pulse,pulse);
+const gr=ctx.createLinearGradient(-w/2,0,w/2,0);gr.addColorStop(0,'#25f4ee');gr.addColorStop(1,'#fe2c55');ctx.fillStyle=gr;rr(-w/2-5*k,-h/2-5*k,w+10*k,h+10*k,h/2+5*k);ctx.fill();
+ctx.fillStyle='#111118';rr(-w/2,-h/2,w,h,h/2);ctx.fill();ctx.fillStyle='#fff';ctx.fillText(txt,0,2*k);ctx.restore()}
+const _draw12=draw;draw=function(){_draw12();try{drawStoryBanner()}catch(e){}};
+async function exportStory(){if(!loaded||!segs.length)return toast('Monte o corte primeiro');
+const save={segs:JSON.parse(JSON.stringify(segs)),sel,teaser:{...teaser},teaserOn:$('teaserOn').checked,endOn:$('endOn').checked,seriesOn:$('seriesOn').checked,tft:$('titleFromTeaser').checked,title:$('title').value,qi:curQIdx};
+const main=plist().filter(x=>!x.teaser);let a=teaser.set&&$('teaserOn').checked?teaser.s-1:main[0].s;a=Math.max(0,Math.min(vid.duration-8,a));
+storyMode=true;storyName=`${fileName}_story.${ext}`;let r=null;
+try{$('titleFromTeaser').checked=false;$('teaserOn').checked=false;$('endOn').checked=false;$('seriesOn').checked=false;curQIdx=-1;segs=[{s:a,e:Math.min(vid.duration,a+8)}];sel=0;if(capMaster)syncCaps();refreshAll();
+r=await runExport()}finally{storyMode=false;segs=save.segs;sel=save.sel;teaser=save.teaser;$('teaserOn').checked=save.teaserOn;$('endOn').checked=save.endOn;$('seriesOn').checked=save.seriesOn;$('titleFromTeaser').checked=save.tft;$('title').value=save.title;curQIdx=save.qi;if(capMaster)syncCaps();refreshAll();teaserUI&&teaserUI()}
+if(!r)return;outBlob=r.blob;showResult(r.total);
+const u=$('saveLink').href;$('saveLink').download=storyName;$('outInfo').textContent=`${storyName} · ${(outBlob.size/1048576).toFixed(1)} MB · ${fmt(r.total)}`;
+const cr=$('credits').value.trim(),q=storyQuestion();const box=$('resPostOut');box.innerHTML='';const d=document.createElement('div');d.className='card';
+const lines=[['🗳️ Enquete (adesivo do TikTok)',`${q}?`.replace(/\?\?$/,'?')],['✍️ Texto no topo (opcional)',save.title],cr?['🏷️ Marque no story',cr]:null].filter(Boolean);
+d.innerHTML='<b>📲 Para postar no story</b><div class="hint">A enquete é um adesivo do próprio TikTok: adicione na hora de postar. Sugestão de opções: "Sim 🔥" e "Não 😂".</div>';
+lines.forEach(([k,v])=>{const x=document.createElement('div');x.className='row';x.style.margin='6px 0';x.innerHTML='<span style="flex:1"><b></b><br><span></span></span><button class="btn xs">Copiar</button>';x.querySelector('b').textContent=k;x.querySelector('span span').textContent=v;x.lastChild.onclick=()=>copy(v);d.appendChild(x)});
+box.appendChild(d);storyName='';window.__storyOut=`${fileName}_story.${ext}`}
+$('storyBtn').onclick=exportStory;
+$('saveBtn').onclick=async()=>{const n=window.__storyOut||outName();if(await saveFile(n,outBlob))$('saveMsg').textContent='Vídeo salvo! ✅'};
+$('closeRes').addEventListener('click',()=>{window.__storyOut=''});
+$('exportBtn').addEventListener('click',()=>{window.__storyOut=''},true);
 </script>
 </body>
 </html>
