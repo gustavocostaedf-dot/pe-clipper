@@ -251,7 +251,7 @@ summary{padding:14px}
 <div class="card" id="camCard">
 <h4>📷 Câmera do streamer</h4>
 <div class="hint" id="camInfo"></div>
-<div class="row"><button class="btn sm pri" id="camMark" disabled>Marcar câmera</button><button class="btn sm" id="camClear">Remover</button></div>
+<div class="row"><button class="btn sm pri" id="camMark" disabled>Marcar câmera</button><button class="btn sm" id="camClear">Remover</button><button class="btn sm" id="camUseLast" style="display:none">Usar a do último vídeo</button></div>
 <label class="inl"><input type="checkbox" id="camOn" checked> Mostrar a câmera ampliada (Desfocado, Preencher e Barras)</label>
 <label>Tamanho da câmera <input type="range" id="camSize" min="0.3" max="1" step="0.01" value="0.58"></label>
 <label>Posição da câmera (cima ↔ baixo) <input type="range" id="camY" min="0.08" max="0.9" step="0.01" value="0.265"></label>
@@ -1746,9 +1746,10 @@ $('fpsHint').textContent=`Vídeo original: ${Math.round(srcFps)} quadros/s. Expo
 vid.addEventListener('loadedmetadata',()=>{setTimeout(()=>{if(loaded)detectFps()},600)});
 let camRect=null,camFromLast=false;const camKey=()=>slug($('credits').value.trim())||'_last';
 function camStore(){try{return JSON.parse(localStorage.getItem('peclipper_cams')||'{}')}catch(e){return{}}}
-function camLoad(){const c=camStore();camFromLast=!c[camKey()]&&!!c._last&&camKey()!=='_last';camRect=c[camKey()]||c._last||null;camInfo()}
-function camInfo(){$('camInfo').textContent=!camRect?'Marque onde fica a webcam no vídeo. O editor lembra para cada criador.':camFromLast?'Usando a câmera marcada no último vídeo. Se estiver no lugar errado, marque de novo para este criador.':`Câmera marcada${$('credits').value.trim()?' para '+$('credits').value.trim():''}. Aparece ampliada no vídeo.`}
-function camSave(r){const c=camStore();c[camKey()]=r;c._last=r;try{localStorage.setItem('peclipper_cams',JSON.stringify(c))}catch(e){}camRect=r;camFromLast=false;camInfo();
+function camLoad(){const c=camStore(),fk=curFile?'f:'+fileKey():null,ck=slug($('credits').value.trim());camFromLast=false;
+camRect=(fk&&c[fk])||(ck&&c[ck])||null;if(!camRect&&$('camUseLast'))$('camUseLast').style.display=c._last?'':'none';else if($('camUseLast'))$('camUseLast').style.display='none';camInfo()}
+function camInfo(){$('camInfo').textContent=!camRect?'Este vídeo não tem câmera marcada. Se tiver webcam do streamer, clique em Marcar câmera. O editor lembra para este vídeo e para o criador.':camFromLast?'Usando a câmera marcada no último vídeo. Se estiver no lugar errado, marque de novo para este criador.':`Câmera marcada${$('credits').value.trim()?' para '+$('credits').value.trim():''}. Aparece ampliada no vídeo.`}
+function camSave(r){const c=camStore();if(curFile)c['f:'+fileKey()]=r;const ck=slug($('credits').value.trim());if(ck)c[ck]=r;c._last=r;try{localStorage.setItem('peclipper_cams',JSON.stringify(c))}catch(e){}camRect=r;camFromLast=false;camInfo();
 // tela dividida: a parte de cima enquadra exatamente a câmera
 const vw=vid.videoWidth,vh=vid.videoHeight,ph=Math.round(H*num('splitR')),base=Math.min(vw,vh*W/ph);
 st.split.tx=r.x+r.w/2;st.split.ty=r.y+r.h/2;$('topZ').value=Math.max(1,Math.min(8,Math.min(base/(r.w*vw),base*ph/W/(r.h*vh))))}
@@ -1846,7 +1847,7 @@ function postTxt(){const sec=(id,h)=>{const b=[...document.querySelectorAll('#'+
 return `${$('title').value.trim()}\n\n${sec('rpTik','TIKTOK')}${sec('rpSho','YOUTUBE SHORTS')}`.trim()}
 $('saveTxt').onclick=async()=>{const t=postTxt();if(!t)return toast('As legendas ainda estão sendo escritas');if(await saveFile(outName().replace(/\.\w+$/,'')+'_legendas.txt',new Blob([t],{type:'text/plain'})))toast('Legendas salvas 📄')};
 $('copyTxt').onclick=()=>{const t=postTxt();if(t)copy(t)};
-$('camMark').onclick=camMarkUI;$('camClear').onclick=()=>{const c=camStore();delete c[camKey()];if(camKey()==='_last'||c._last===camRect)delete c._last;try{localStorage.setItem('peclipper_cams',JSON.stringify(c))}catch(e){}camRect=null;camInfo()};
+$('camMark').onclick=camMarkUI;$('camClear').onclick=()=>{const c=camStore();if(curFile)delete c['f:'+fileKey()];delete c[camKey()];if(camKey()==='_last'||c._last===camRect)delete c._last;try{localStorage.setItem('peclipper_cams',JSON.stringify(c))}catch(e){}camRect=null;camInfo()};
 STYLE_IDS.push('camOn','camSize','camY','checkOn','snapOn');
 vid.addEventListener('loadedmetadata',()=>{$('camMark').disabled=false;camLoad()});camLoad();renderDict();
 (function(){
@@ -2055,6 +2056,7 @@ const key=$('title').value+'|'+cutSig()+'|'+tlOff+'|'+$('credits').value+'|'+cap
 $('teaserLabelNext').onclick=()=>{$('teaserLabelAuto').checked=true;tlOff++;$('teaserTxt').value=teaserLabelText();toast('Texto da chamada: '+$('teaserTxt').value)};
 $('teaserTxt').addEventListener('input',()=>{$('teaserLabelAuto').checked=false});
 setInterval(()=>{if($('teaserLabelAuto').checked&&document.activeElement!==$('teaserTxt')){const v=teaserLabelText();if($('teaserTxt').value!==v)$('teaserTxt').value=v}},800);
+$('camUseLast').onclick=()=>{const c=camStore();if(c._last){camSave(c._last);toast('Usando a câmera do último vídeo 📷')}};
 </script>
 </body>
 </html>
