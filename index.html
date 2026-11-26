@@ -2245,7 +2245,7 @@ $('hooksBtn').onclick=()=>{if(!loaded||!segs.length)return toast('Monte o corte 
   $('hooksGo').onclick=()=>{const orig=$('title').value,ins=[...box.querySelectorAll('.hookIn')];ins.forEach((e,i)=>{const t=e.value.trim();if(!t)return;$('title').value=t;titleAuto=false;const p=snap();p.hook='ABC'[i];queue.push(p)});
     $('title').value=orig;renderQueue();box.innerHTML='';toast('3 ganchos na fila ✅')}};
 // agenda
-const SLOTS=['12:00','18:30','21:00'],DOW=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const SLOTS=['12:00','19:00'],DOW=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 function agendaSlots(n){const out=[];const d=new Date();let day=new Date(d.getFullYear(),d.getMonth(),d.getDate());let si=SLOTS.findIndex(s=>{const[h,m]=s.split(':');return d.getHours()*60+d.getMinutes()+30<(+h)*60+(+m)});if(si<0){si=0;day.setDate(day.getDate()+1)}
   for(let i=0;i<n;i++){out.push(`${DOW[day.getDay()]} ${String(day.getDate()).padStart(2,'0')}/${String(day.getMonth()+1).padStart(2,'0')} · ${SLOTS[si]}`);si++;if(si>=SLOTS.length){si=0;day.setDate(day.getDate()+1)}}return out}
 $('agendaBtn').onclick=()=>{const box=$('agendaBox');if(!queue.length){box.innerHTML='<div class="hint">A fila está vazia. Adicione cortes à fila primeiro.</div>';return}
@@ -2359,6 +2359,18 @@ function kwEmojiFor(words){const txt=normTxt(words.join(' ')).toUpperCase();cons
   $('scoreBtn').onclick=showScore;$('silBtn').onclick=tirarSilencios;$('undoSilBtn').onclick=desfazerSilencios;$('faceBtn').onclick=enquadrarRosto;
   $('searchBtn').onclick=()=>buscarMomentos($('searchWords').value);$('searchWords').addEventListener('keydown',e=>{if(e.key==='Enter')buscarMomentos($('searchWords').value)});
 })();
+// v16: pauta de futebol (ganchos, hashtags) e horários 12h/19h
+const FUT_RE=/FLAMENGO|PALMEIRAS|CORINTHIANS|SAO PAULO|SANTOS|VASCO|GREMIO|INTER|ATLETICO|BOTAFOGO|FLUMINENSE|CRUZEIRO|BRASILEIR|COPA|GOL|JOGO|TECNICO|TIME|CAMPEAO|RODADA|PENALTI|ARBITRO|LIBERTADORES|FUTEBOL/;
+const FUT_TEAMS=[['FLAMENGO','#flamengo'],['PALMEIRAS','#palmeiras'],['CORINTHIANS','#corinthians'],['SAO PAULO','#saopaulo'],['SANTOS','#santos'],['VASCO','#vasco'],['GREMIO','#gremio'],['BOTAFOGO','#botafogo'],['FLUMINENSE','#fluminense'],['CRUZEIRO','#cruzeiro'],['ATLETICO','#atletico']];
+function isFutebol(){const txt=normTxt(($('title').value||'')+' '+cutText()+' '+($('aiCtx').value||'')).toUpperCase();return FUT_RE.test(txt)}
+function futTeam(){const txt=normTxt(($('title').value||'')+' '+cutText()+' '+($('aiCtx').value||'')).toUpperCase();return FUT_TEAMS.find(([k])=>txt.includes(k))||null}
+const _baseTags16=baseTags;baseTags=function(){const base=_baseTags16();if(!isFutebol())return base;
+  const t=futTeam(),extra=['#futebol','#brasileirao'];if(t)extra.push(t[1]);
+  return [...new Set([...base,...extra])].slice(0,12)};
+const _tFallback16=tFallback;tFallback=function(){const base=_tFallback16();if(!isFutebol())return base;
+  const T=(futTeam()||[null,'MEU TIME'])[1].replace(/^#/,'').toUpperCase().replace('SAOPAULO','SÃO PAULO');
+  const fut=[`ESSA É A PIOR DECISÃO DA HISTÓRIA DO ${T} 😳`,`${T} PODE SER CAMPEÃO HOJE? 🏆`,'O QUE O TÉCNICO FEZ FOI ABSURDO 😳','SE VOCÊ É TORCEDOR, PRECISA VER ISSO 👀','NINGUÉM FALA DISSO, MAS O TIME TÁ EM CRISE 🤔'];
+  return [...new Set([...fut,...base])]};
 </script>
 </body>
 </html>
