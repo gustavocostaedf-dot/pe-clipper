@@ -2187,6 +2187,85 @@ $('exportBtn').addEventListener('click',()=>{window.__storyOut=''},true);
 const VIEW_IDS=['camOn','zoom','camSize','camY'];
 const _snap13=snap;snap=function(){const p=_snap13();p.view={};VIEW_IDS.forEach(id=>{const e=$(id);if(e)p.view[id]=e.type==='checkbox'?e.checked:e.value});return p};
 const _applySnap13=applySnap;applySnap=function(p){if(p&&p.view)VIEW_IDS.forEach(id=>{const e=$(id);if(!e||!(id in p.view))return;if(e.type==='checkbox')e.checked=!!p.view[id];else e.value=p.view[id];e.dispatchEvent(new Event(e.type==='checkbox'?'change':'input'))});return _applySnap13(p)};
+// v14: turbo TikTok (palavra-chave, texto lateral, zoom na entrada, mascote, 3 ganchos, agenda, radar)
+(function(){const o=document.createElement('option');o.value='keyword';o.textContent='Palavra-chave em caixa (estilo TikTok)';$('capStyle').appendChild(o)})();
+const KW_STOP=new Set('a o e é de da do das dos que em um uma uns umas pra para por com no na nos nas se eu tu ele ela eles elas você vocês me te lhe isso esse essa este esta aqui ali lá já mas mais muito não sim tá ta vai foi era ser ter tem tô to né cara mano aí ai então quando como porque pois sem até ao aos à às ou só bem tipo assim agora hoje gente meu minha seu sua'.split(' '));
+const kwStrong=w=>{const c=w.toLowerCase().replace(/[^\p{L}\p{N}*]/gu,'');return c.length>=4&&!KW_STOP.has(c)||/\d/.test(c)||c.includes('*')};
+const _drawCaption14=drawCaption;drawCaption=function(c,t,k){if($('capStyle').value!=='keyword')return _drawCaption14(c,t,k);
+let txt=censorText(c.t.trim()).toUpperCase();const words=txt.split(/\s+/).filter(Boolean);if(!words.length)return;const tm=capTimes(c,words);
+let wi=tm.findIndex(([a,b])=>t>=a&&t<b);if(wi<0)wi=words.length-1;
+let show=[];for(let i=0;i<=wi;i++)if(kwStrong(words[i]))show.push(i);
+if(!show.length)show=[wi];
+const lastStrong=show[show.length-1];let from=show.length>2?show[show.length-2]:show[0];
+let pick=[];for(let i=Math.max(0,from-1);i<=lastStrong;i++)pick.push(i);if(pick.length>4)pick=pick.slice(-4);
+const fs=num('capSize')*k*1.05,cy=num('capY')*H,hi=$('capHi').value;
+ctx.save();ctx.font=`${fs*1.12}px Anton, Impact, 'Arial Narrow', sans-serif`;ctx.textBaseline='middle';ctx.textAlign='left';
+const sp=fs*0.28,ws=pick.map(i=>ctx.measureText(words[i]).width),tw=ws.reduce((a,b)=>a+b,0)+sp*(pick.length-1),padX=fs*0.38,bh=fs*1.45;
+const since=t-tm[lastStrong][0],pop=since<0.12?0.85+0.15*(since/0.12):1;
+ctx.translate(W/2,cy);ctx.scale(pop,pop);ctx.fillStyle='rgba(12,12,14,.92)';rr(-tw/2-padX,-bh/2,tw+padX*2,bh,fs*0.12);ctx.fill();
+let x=-tw/2;pick.forEach((i,j)=>{ctx.fillStyle=i===lastStrong&&kwStrong(words[i])?hi:'#ffffff';ctx.fillText(words[i],x,fs*0.04);x+=ws[j]+sp});ctx.restore()};
+(function(){const card=document.createElement('div');card.className='card';card.id='turboCard';
+card.innerHTML=`<h4>🚀 Turbo TikTok</h4>
+<div class="hint">Recursos pra prender nos primeiros segundos. Tudo fica longe da lateral direita e do rodapé, onde ficam os botões do TikTok.</div>
+<label class="inl"><input type="checkbox" id="introZoom" checked> Zoom na entrada (0,6 s)</label>
+<div class="row"><label class="inl"><input type="checkbox" id="sideOn"> Texto vertical na lateral</label><input type="text" id="sideWord" placeholder="Ex.: CAOS" maxlength="14" style="flex:1"><input type="color" id="sideColor" value="#ff2b2b"></div>
+<label class="inl"><input type="checkbox" id="mascotOn" checked> Mascote pe.clipper na chamada do story</label>
+<div class="row" style="flex-wrap:wrap;margin-top:6px"><button class="btn sm pri" id="hooksBtn">🧪 3 ganchos → fila</button><button class="btn sm" id="agendaBtn">📅 Agenda da fila</button></div>
+<div id="hooksBox"></div><div id="agendaBox"></div>
+<details style="margin-top:8px"><summary><b>🔥 Radar: o que tá bombando</b></summary>
+<div class="hint">Abre a busca do YouTube com os vídeos <b>mais vistos da semana</b> de cada criador. Um por linha.</div>
+<textarea id="radarList" rows="5"></textarea><div class="row" style="flex-wrap:wrap"><button class="btn sm" id="radarAll">Abrir todos</button><button class="btn sm" id="radarTT">Ver no TikTok</button></div><div id="radarBtns" class="row" style="flex-wrap:wrap;gap:6px;margin-top:6px"></div></details>`;
+($('blurCard')||$('camCard')).after(card)})();
+['introZoom','sideOn','sideWord','sideColor','mascotOn'].forEach(id=>{STYLE_IDS.push(id);const e=$(id);DEFAULTS[id]=e.type==='checkbox'?e.checked:e.value;e.addEventListener(e.type==='checkbox'?'change':'input',()=>{try{draw()}catch(x){}})});
+VIEW_IDS.push('sideOn','sideWord');
+const zcan=document.createElement('canvas'),zctx=zcan.getContext('2d');
+function drawSideWord(){if(!$('sideOn').checked)return;const w=$('sideWord').value.trim().toUpperCase();if(!w||storyMode)return;
+const k=Math.min(W,H)/1080,p=outPos(),a=Math.min(1,p/0.35),fs=Math.min(130*k,(H*0.5)/Math.max(3,w.length)*1.55);
+ctx.save();ctx.globalAlpha=a;ctx.translate(W*0.075-(1-a)*80*k,H*0.42);ctx.rotate(-Math.PI/2);ctx.font=`${fs}px Anton, Impact, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+ctx.lineJoin='round';ctx.lineWidth=fs*0.14;ctx.strokeStyle='rgba(0,0,0,.65)';ctx.strokeText(w,0,0);ctx.fillStyle=$('sideColor').value;ctx.fillText(w,0,0);ctx.restore()}
+function drawMascot(){if(!storyMode||!$('mascotOn').checked)return;const k=Math.min(W,H)/1080,px=11*k,bob=Math.round(Math.sin(vnow()/180)*2)*k;
+const M=['....PPPP....','...PPPPPP...','..PPPPPPPP..','..KSSSSSSK..','..SSWSSWSS..','..SSKSSKSS..','..SSSSSSSS..','...SSRRSS...','....SSSS....','..TTTTTTTT..','.STTTTTTTTS.','.STTTTTTTTS.','..TTTTTTTT..','..DD....DD..'];
+const C={P:'#fe2c55',K:'#1b1b22',S:'#f1c7a1',W:'#ffffff',R:'#c0392b',T:'#25c7d9',D:'#2a2a33'};
+ctx.font=`900 ${50*k}px Poppins`;const bw=ctx.measureText('Vídeo completo no perfil 👆').width+50*k*1.4;const x0=Math.max(8*k,W/2-bw/2-M[0].length*px-24*k),y0=H*0.8-M.length*px/2+bob;ctx.save();
+M.forEach((row,r)=>[...row].forEach((ch,c)=>{if(ch==='.')return;ctx.fillStyle=C[ch];ctx.fillRect(Math.round(x0+c*px),Math.round(y0+r*px),Math.ceil(px),Math.ceil(px))}));
+ctx.font=`900 ${26*k}px Poppins`;ctx.fillStyle='#fff';ctx.textAlign='left';ctx.fillText('✂️',x0+12*px,y0+10*px);ctx.restore()}
+function introZoomFx(){if(!$('introZoom').checked||storyMode)return;const p=outPos(),D=0.6;if(p>=D)return;const e=1-Math.pow(p/D,2),s=1+0.16*e;
+if(zcan.width!==ctx.canvas.width||zcan.height!==ctx.canvas.height){zcan.width=ctx.canvas.width;zcan.height=ctx.canvas.height}
+zctx.clearRect(0,0,zcan.width,zcan.height);zctx.drawImage(ctx.canvas,0,0);ctx.save();ctx.setTransform(1,0,0,1,0,0);
+const cw=ctx.canvas.width,ch=ctx.canvas.height;ctx.drawImage(zcan,(cw-cw*s)/2,(ch-ch*s)/2,cw*s,ch*s);ctx.restore()}
+const _draw14=draw;draw=function(){_draw14();try{drawSideWord();drawMascot();introZoomFx()}catch(e){}};
+// 3 ganchos
+function hookVariants(){const t=$('title').value.trim().replace(/\s*\p{Extended_Pictographic}+\s*$/u,'').trim()||'OLHA ISSO';const cr=(creatorShort?creatorShort():'').toUpperCase();
+const em=$('title').value.match(/\p{Extended_Pictographic}/u)?.[0]||'😂';let q=t.replace(/[.!]+$/,'');if(!/\?$/.test(q))q=(/^(ELE|ELA|O |A )/.test(q)?q:'VOCÊ VIU ISSO? '+q)+'?';
+let c='';try{c=autoTeaserLabel().replace(/^\p{Extended_Pictographic}\s*/u,'')}catch(e){}if(!c||c===t)c=cr?`OLHA O QUE O ${cr} FEZ`:'NINGUÉM ESPERAVA ISSO';
+return[`${t} ${em}`,`${q.replace(/\?\?$/,'?')} 🤔`,`${c} 😳`]}
+$('hooksBtn').onclick=()=>{if(!loaded||!segs.length)return toast('Monte o corte primeiro');const v=hookVariants(),box=$('hooksBox');
+box.innerHTML='<div class="hint">O mesmo corte com 3 títulos. Poste em dias diferentes e veja no TikTok Studio qual segura mais.</div>'+['A','B','C'].map((L,i)=>`<label>Gancho ${L} <input type="text" class="hookIn" value=""></label>`).join('')+'<button class="btn sm pri" id="hooksGo">Adicionar os 3 à fila</button>';
+box.querySelectorAll('.hookIn').forEach((e,i)=>e.value=v[i]);
+$('hooksGo').onclick=()=>{const orig=$('title').value,ins=[...box.querySelectorAll('.hookIn')];ins.forEach((e,i)=>{const t=e.value.trim();if(!t)return;$('title').value=t;titleAuto=false;const p=snap();p.hook='ABC'[i];queue.push(p)});
+$('title').value=orig;renderQueue();box.innerHTML='';toast('3 ganchos na fila ✅')}};
+// agenda
+const SLOTS=['12:00','18:30','21:00'],DOW=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+function agendaSlots(n){const out=[];const d=new Date();let day=new Date(d.getFullYear(),d.getMonth(),d.getDate());let si=SLOTS.findIndex(s=>{const[h,m]=s.split(':');return d.getHours()*60+d.getMinutes()+30<(+h)*60+(+m)});if(si<0){si=0;day.setDate(day.getDate()+1)}
+for(let i=0;i<n;i++){out.push(`${DOW[day.getDay()]} ${String(day.getDate()).padStart(2,'0')}/${String(day.getMonth()+1).padStart(2,'0')} · ${SLOTS[si]}`);si++;if(si>=SLOTS.length){si=0;day.setDate(day.getDate()+1)}}return out}
+$('agendaBtn').onclick=()=>{const box=$('agendaBox');if(!queue.length){box.innerHTML='<div class="hint">A fila está vazia. Adicione cortes à fila primeiro.</div>';return}
+const hooks=queue.map((q,i)=>({q,i})).filter(x=>x.q.hook),rest=queue.map((q,i)=>({q,i})).filter(x=>!x.q.hook);const mix=[],sl=[];
+const all0=agendaSlots(queue.length*3+6);let lastHookDay='';for(const slot of all0){if(!hooks.length&&!rest.length)break;const day=slot.split(' · ')[0];
+if(hooks.length&&day!==lastHookDay){mix.push(hooks.shift());sl.push(slot);lastHookDay=day}else if(rest.length){mix.push(rest.shift());sl.push(slot)}}
+const orig=$('title').value;let all='';box.innerHTML='<div class="hint">3 posts por dia (12:00, 18:30 e 21:00). Ganchos A/B/C do mesmo corte ficam em dias separados. Agende no TikTok Studio.</div>';
+mix.forEach(({q,i},j)=>{$('title').value=q.title||'';let tik='';try{tik=makePack().tik}catch(e){tik=q.title||''}
+const d=document.createElement('div');d.className='card';d.innerHTML=`<div class="row"><b></b><span class="sp"></span><button class="btn xs">Copiar legenda</button></div><div class="hint"></div>`;
+d.querySelector('b').textContent=`${sl[j]}`;d.querySelector('.hint').textContent=`Corte ${i+1}${q.hook?' · gancho '+q.hook:''}: ${q.title||''}`;d.querySelector('button').onclick=()=>copy(tik);box.appendChild(d);all+=`${sl[j]} — Corte ${i+1}${q.hook?' ('+q.hook+')':''}: ${q.title||''}\n`});
+$('title').value=orig;const b=document.createElement('button');b.className='btn sm';b.textContent='📋 Copiar agenda toda';b.onclick=()=>copy(all);box.appendChild(b)};
+// radar
+const RADAR_DEF='LOUD Coringa\nPaulinho o LOKO\nPodpah Quebrada FC\nTiaGOL\nThiago Live\nAqueles Caras';
+$('radarList').value=(()=>{try{return localStorage.getItem('peclipper_radar')||RADAR_DEF}catch(e){return RADAR_DEF}})();
+function radarNames(){return $('radarList').value.split('\n').map(x=>x.trim()).filter(Boolean)}
+const ytWeek=n=>'https://www.youtube.com/results?search_query='+encodeURIComponent(n)+'&sp=CAMSBAgDEAE%253D';
+function renderRadar(){try{localStorage.setItem('peclipper_radar',$('radarList').value)}catch(e){}const b=$('radarBtns');b.innerHTML='';radarNames().forEach(n=>{const a=document.createElement('a');a.className='btn xs';a.textContent='🔥 '+n;a.href=ytWeek(n);a.target='_blank';a.rel='noopener';b.appendChild(a)})}
+$('radarList').addEventListener('input',renderRadar);renderRadar();
+$('radarAll').onclick=()=>radarNames().forEach(n=>window.open(ytWeek(n),'_blank'));
+$('radarTT').onclick=()=>radarNames().forEach(n=>window.open('https://www.tiktok.com/search/video?q='+encodeURIComponent(n),'_blank'));
 </script>
 </body>
 </html>
